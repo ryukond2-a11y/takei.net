@@ -195,7 +195,7 @@ function addPost(p, prepend = true) {
   }
 
   li.innerHTML =
-    "<b>" + escape(p.user) + "</b><br>" +
+    "<b>" + escape(p.user) + "</b> (" + p.uid + ")<br>" +
     escape(p.text) + "<br>" +
     imgHTML +
     "<small>" + new Date(p.time).toLocaleString() + "</small>" +

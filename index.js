@@ -33,7 +33,9 @@ const NG_WORDS = [
 let bannedUsers = {}; // { username: timestamp }
 
 const upload = multer({ storage: multer.memoryStorage() });
-
+function generateUID(){
+  return "U" + Math.floor(1000 + Math.random() * 9000);
+}
 /* ===== 画面 ===== */
 app.get("/", requireAccess, (req, res) => {
   res.send(`<!DOCTYPE html>

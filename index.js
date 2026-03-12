@@ -36,7 +36,7 @@ const upload = multer({ storage: multer.memoryStorage() });
 
 /* ===== 画面 ===== */
 app.get("/", requireAccess, (req, res) => {
-  res.send(<!DOCTYPE html>
+  res.send(`<!DOCTYPE html>
 <html>
 <head>
 <meta charset="utf-8">
@@ -333,7 +333,7 @@ load();
 </script>
 </body>
 </html>
-);
+`);
 });
 
 /* ===== API ===== */

@@ -11,12 +11,19 @@ app.use(cookieParser());
 gateRoutes(app);
 
 const FILE = path.join(__dirname, "posts.json");
+const USERFILE = path.join(__dirname, "users.json");
 
 if (!fs.existsSync(FILE)) {
   fs.writeFileSync(FILE, "[]");
 }
 
+if (!fs.existsSync(USERFILE)) {
+  fs.writeFileSync(USERFILE, "{}");
+}
+
 let posts = JSON.parse(fs.readFileSync(FILE, "utf8"));
+let users = JSON.parse(fs.readFileSync(USERFILE, "utf8"));
+
 let clients = [];
 
 const NG_WORDS = [
@@ -38,7 +45,6 @@ res.send(`<!DOCTYPE html>
 <title>takei.net</title>
 
 <style>
-
 body{
 background:#000;
 color:#e7e9ea;
@@ -109,7 +115,6 @@ padding-left:8px;
 margin-top:8px;
 font-size:0.9em;
 }
-
 </style>
 </head>
 
@@ -122,6 +127,8 @@ font-size:0.9em;
 <input id="realname" placeholder="本名（表示されません）">
 
 <input id="user" placeholder="ユーザー名">
+
+<input id="passcode" placeholder="パスコード（なりすまし防止）">
 
 <textarea id="text" maxlength="140" placeholder="本文"></textarea>
 
@@ -138,6 +145,7 @@ font-size:0.9em;
 const textEl=document.getElementById("text")
 const countEl=document.getElementById("count")
 const userEl=document.getElementById("user")
+const passEl=document.getElementById("passcode")
 const imageEl=document.getElementById("image")
 const realnameEl=document.getElementById("realname")
 const searchEl=document.getElementById("search")
@@ -172,16 +180,6 @@ function addPost(p,prepend=true){
 
  let img=p.image ? "<img src='"+p.image+"'>" : ""
 
- let replies=""
-
- if(p.replies){
-  p.replies.forEach(r=>{
-   replies+=
-   "<div>"+escape(r.text)+
-   "<br><small>"+new Date(r.time).toLocaleString()+"</small></div>"
-  })
- }
-
  li.innerHTML=
  "<b>"+escape(p.user)+"</b><br>"+
  escape(p.text)+"<br>"+
@@ -192,8 +190,7 @@ function addPost(p,prepend=true){
  "<span class='likeText'>"+likeText(p.likes||0)+"</span> "+
  "<span class='likeCount'>"+(p.likes||0)+"</span>"+
  "</button>"+
- "</div>"+
- "<div class='replies'>"+replies+"</div>"
+ "</div>"
 
  li.dataset.id=p.id
 
@@ -221,18 +218,12 @@ es.onmessage=e=>{
  const existing=document.querySelector("li[data-id='"+p.id+"']")
 
  if(existing){
-
  existing.querySelector(".likeCount").textContent=p.likes||0
  existing.querySelector(".likeText").textContent=likeText(p.likes||0)
-
  return
  }
 
  addPost(p,true)
-
- if("Notification" in window && Notification.permission==="granted"){
-  new Notification("新着投稿",{body:p.user+" : "+p.text})
- }
 
 }
 
@@ -244,10 +235,12 @@ async function postWithPermission(){
 async function post(){
 
  const user=userEl.value.trim()||"匿名"
+ const passcode=passEl.value.trim()
  const text=textEl.value.trim()
  const realname=realnameEl.value.trim()
 
  if(!realname){alert("本名入力");return}
+ if(!passcode){alert("パスコード入力");return}
  if(!text)return
 
  let imageData=null
@@ -267,7 +260,7 @@ async function post(){
  await fetch("/post",{
   method:"POST",
   headers:{"Content-Type":"application/json"},
-  body:JSON.stringify({user,text,image:imageData,realname})
+  body:JSON.stringify({user,passcode,text,image:imageData,realname})
  })
 
  textEl.value=""
@@ -315,9 +308,20 @@ res.json(sorted)
 
 app.post("/post",(req,res)=>{
 
-const {user,text,image,realname}=req.body
+const {user,passcode,text,image,realname}=req.body
 
 if(!text?.trim()) return res.sendStatus(400)
+
+if(!passcode) return res.status(400).send("パスコード必須")
+
+if(!users[user]){
+ users[user]=passcode
+ fs.writeFileSync(USERFILE,JSON.stringify(users,null,2))
+}
+
+if(users[user]!==passcode){
+ return res.status(403).send("なりすまし禁止")
+}
 
 if(NG_WORDS.some(w=>text.includes(w))){
  bannedUsers[user]=Date.now()
@@ -329,7 +333,6 @@ if(bannedUsers[user] && Date.now()-bannedUsers[user]<60000){
 }
 
 const post={
-
 id:Date.now(),
 user:user||"匿名",
 realname:(realname||"").trim(),
@@ -338,7 +341,6 @@ image:image||null,
 time:Date.now(),
 likes:0,
 replies:[]
-
 }
 
 posts.unshift(post)

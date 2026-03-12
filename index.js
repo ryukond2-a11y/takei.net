@@ -400,5 +400,8 @@ app.post("/like/:id", (req, res) => {
   clients.forEach(c => c.write("data:" + JSON.stringify(post) + "\n\n"));
   res.sendStatus(200);
 });
+const PORT = process.env.PORT || 3000;
 
-app.listen(3000, () => console.log("takei.net running → http://localhost:3000"));
+app.listen(PORT, () => {
+  console.log("takei.net running");
+});

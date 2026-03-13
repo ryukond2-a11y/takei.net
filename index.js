@@ -6,7 +6,6 @@ const cookieParser = require("cookie-parser");
 const multer = require("multer"); // 画像アップロード用
 
 const app = express();
-app.use(express.json()); 
 app.use(express.json({ limit: "2mb" })); // JSON大きめで画像対応
 app.use(cookieParser());
 gateRoutes(app);

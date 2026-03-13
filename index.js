@@ -13,6 +13,12 @@ gateRoutes(app);
 
 const FILE = path.join(__dirname, "posts.json");
 
+if (!fs.existsSync(FILE)) {
+  fs.writeFileSync(FILE, "[]");
+}
+
+let posts = JSON.parse(fs.readFileSync(FILE, "utf8"));
+
 // 投稿データ
 let posts = fs.existsSync(FILE)
   ? JSON.parse(fs.readFileSync(FILE, "utf8"))

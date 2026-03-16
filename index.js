@@ -364,7 +364,7 @@ app.get("/posts", (req, res) => {
   res.json(sortedPosts);
 });
 
-app.post("/post", (req, res) => {
+app.post("/post", async (req, res) => { 
   const { user, text, image, realname } = req.body;
   if (!text?.trim()) return res.sendStatus(400);
   if (NG_WORDS.some((w) => text.includes(w))) {
@@ -384,8 +384,8 @@ app.post("/post", (req, res) => {
     likes: 0,
     replies: []
   };
-  posts.unshift(post);
-  fs.writeFileSync(FILE, JSON.stringify(posts, null, 2));
+posts.unshift(post);
+  await saveDB(); // これでOK！
   clients.forEach((c) => c.write("data:" + JSON.stringify(post) + "\n\n"));
   res.sendStatus(200);
 });

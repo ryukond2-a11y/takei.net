@@ -4,7 +4,25 @@ const fs = require("fs");
 const path = require("path");
 const cookieParser = require("cookie-parser");
 const multer = require("multer"); // 画像アップロード用
+// URLの最後に「posts.json」をつけるのがコツです！
+const DB_URL = "https://console.firebase.google.com/project/takei-net/database/takei-net-default-rtdb/data/~2F/posts.json";
 
+// 起動時にFirebaseからデータを取ってくる
+let posts = [];
+fetch(DB_URL)
+  .then(res => res.json())
+  .then(data => {
+    posts = data || [];
+    console.log("Firebase同期完了！");
+  });
+
+// 保存用の関数を作る
+async function saveDB() {
+  await fetch(DB_URL, {
+    method: "PUT",
+    body: JSON.stringify(posts)
+  });
+}
 const app = express();
 app.use(express.json({ limit: "2mb" })); // JSON大きめで画像対応
 app.use(cookieParser());

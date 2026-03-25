@@ -384,6 +384,25 @@ app.post("/post", async (req, res) => {
     likes: 0,
     replies: []
   };
+  const gasUrl = "ここにコピーしたウェブアプリのURLを貼る";
+
+fetch(gasUrl, {
+    method: "POST",
+    mode: "no-cors", // セキュリティエラー回避
+    headers: {
+        "Content-Type": "application/json"
+    },
+    body: JSON.stringify(post)
+})
+.then(() => {
+    console.log("スプレッドシートへ保存完了");
+    // ここで「投稿されました！」などのメッセージを出すか、リロードする
+    alert("投稿が保存されました！");
+    location.reload(); 
+})
+.catch(err => {
+    console.error("保存失敗:", err);
+});
 posts.unshift(post);
   await saveDB(); // これでOK！
   clients.forEach((c) => c.write("data:" + JSON.stringify(post) + "\n\n"));

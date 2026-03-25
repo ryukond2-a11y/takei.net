@@ -1,4 +1,4 @@
-const ACCESS_CODE = "test"; // 今使ってるコード
+const ACCESS_CODE = "aisiteruyotakei"; // 今使ってるコード
 
 function gateRoutes(app) {
   app.get("/gate", (req, res) => {

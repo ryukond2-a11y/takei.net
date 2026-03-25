@@ -33,24 +33,6 @@ app.use(express.json({ limit: "5mb" })); // JSON大きめで画像対応
 app.use(cookieParser());
 gateRoutes(app);
 
-/* 【修正箇所1：38行目付近に追加】 PWA設定ファイルのルート定義 */
-app.get("/manifest.json", (req, res) => {
-  res.json({
-    "short_name": "takei.net",
-    "name": "takei.net 掲示板アプリ",
-    "display": "standalone",
-    "start_url": "/",
-    "background_color": "#000000",
-    "theme_color": "#1d9bf0",
-    "icons": [{ "src": "https://via.placeholder.com/192/1d9bf0/ffffff?text=T", "sizes": "192x192", "type": "image/png" }]
-  });
-});
-app.get("/sw.js", (req, res) => {
-  res.setHeader("Content-Type", "application/javascript");
-  res.send("self.addEventListener('fetch', function(e){});");
-});
-/* 【修正箇所1 終了】 */
-
 const FILE = path.join(__dirname, "posts.json");
 
 if (!fs.existsSync(FILE)) {
@@ -78,12 +60,8 @@ app.get("/", requireAccess, (req, res) => {
 <html>
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>takei.net</title>
-
-<link rel="manifest" href="/manifest.json">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <style>
 /* カラー変数の定義 */
 :root {
@@ -106,14 +84,6 @@ body.light-mode {
   --reply-bg: #f7f9f9;
   --btn-color: #1d9bf0;
 }
-
-/* 【修正箇所3：CSS内に追加】 インストール案内バナーのスタイル */
-#install-prompt {
-  display: none; background: #1d9bf0; color: white; padding: 12px;
-  text-align: center; font-weight: bold; cursor: pointer;
-  position: sticky; top: 0; z-index: 9999; border-radius: 0 0 10px 10px;
-}
-/* 【修正箇所3 終了】 */
 
 #notice {
   font-size: 12px;
@@ -206,7 +176,6 @@ img { max-width: 100%; margin-top: 8px; border-radius: 6px; }
 </head>
 <body>
 
-<div id="install-prompt" onclick="triggerInstall()">📱 アプリとしてホーム画面に追加する</div>
 <button class="mode-toggle" onclick="toggleMode()">モード切替</button>
 
 <div class="header">
@@ -236,29 +205,6 @@ img { max-width: 100%; margin-top: 8px; border-radius: 6px; }
 <ul id="posts"></ul>
 
 <script>
-/* 【修正箇所5：scriptタグ開始直後に追加】 インストール要求ロジック */
-let deferredPrompt;
-window.addEventListener('beforeinstallprompt', (e) => {
-  e.preventDefault(); deferredPrompt = e;
-  document.getElementById('install-prompt').style.display = 'block';
-});
-async function triggerInstall() {
-  if (deferredPrompt) {
-    deferredPrompt.prompt();
-    const { outcome } = await deferredPrompt.userChoice;
-    if (outcome === 'accepted') document.getElementById('install-prompt').style.display = 'none';
-    deferredPrompt = null;
-  }
-}
-// iOS向け手動案内
-if (/iphone|ipad|ipod/.test(window.navigator.userAgent.toLowerCase()) && !window.navigator.standalone) {
-  const p = document.getElementById('install-prompt');
-  p.innerText = "☝️ 共有ボタンから『ホーム画面に追加』してアプリ化！";
-  p.style.display = 'block';
-}
-if ('serviceWorker' in navigator) { navigator.serviceWorker.register('/sw.js'); }
-/* 【修正箇所5 終了】 */
-
 const textEl = document.getElementById("text");
 const countEl = document.getElementById("count");
 const userEl = document.getElementById("user");
@@ -514,7 +460,7 @@ app.post("/post", async (req, res) => {
   res.sendStatus(200);
 });
 
-// --- いいね機能のAPI ---
+// --- 【修正点】ここからいいね機能のAPI ---
 app.post("/like/:id", async (req, res) => {
   const id = Number(req.params.id);
   const post = posts.find(p => p.id === id);
@@ -527,6 +473,7 @@ app.post("/like/:id", async (req, res) => {
     res.sendStatus(404);
   }
 });
+// --- 【修正点】ここまで ---
 
 app.post("/reply/:id", (req,res)=>{
   const id = Number(req.params.id);
@@ -554,3 +501,4 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`サーバーが起動しました: http://localhost:${PORT}`);
 });
+

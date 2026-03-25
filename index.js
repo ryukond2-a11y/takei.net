@@ -54,7 +54,8 @@ const NG_WORDS = [
   "キンタマ",
 ];
 let bannedUsers = {}; // { username: timestamp }
-
+// 【追加】削除用パスワード
+const DELETE_PASSWORD = "1234"; // ←好きなパスワードに変更
 const upload = multer({ storage: multer.memoryStorage() });
 
 /* ===== 画面 ===== */
@@ -366,7 +367,26 @@ app.get("/posts", (req, res) => {
     .sort((a, b) => a.time - b.time);
   res.json(sortedPosts);
 });
+// 【追加】削除API
+app.post("/delete/:id", (req, res) => {
+  const id = Number(req.params.id);
+  const { password } = req.body;
 
+  if (password !== DELETE_PASSWORD) {
+    return res.status(403).send("パスワード違います");
+  }
+
+  const index = posts.findIndex(p => p.id === id);
+  if (index === -1) return res.sendStatus(404);
+
+  posts.splice(index, 1);
+  saveDB();
+
+  // 全体更新通知（削除反映）
+  clients.forEach(c => c.write("data:" + JSON.stringify({ deleteId: id }) + "\n\n"));
+
+  res.sendStatus(200);
+});
 app.post("/post", async (req, res) => { 
   const { user, text, image, realname } = req.body;
   if (!text?.trim()) return res.sendStatus(400);

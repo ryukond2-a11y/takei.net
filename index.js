@@ -146,7 +146,7 @@ img { max-width: 100%; margin-top: 8px; border-radius: 6px; }
   <h2>お知らせ</h2>
   <ul>
     <li>
-      <p>【通知が出るようにりました。】</br>●バグについて：スマートフォンにて通知が表示されないバグを発見し、対処しています。未知のバグを発見した場合は根田までお知らせください。【Ver.4.1.1】</p>
+      <p>【通知が出るようにりました。】</br>投稿できない場合は画面右上のURLの左の南京錠マークをクリックし、【このサイトに対する権限】をクリックし、【通知】を許可にすることをお願いいたします。</br>３月４日は午前8時00分から利用ができ、午後4時以降はメンテナンスのため利用を一時停止することがあります。●バグについて：スマートフォンにて画像の投稿ができないバグを発見し、対処しています。未知のバグを発見した場合は根田までお知らせください。【Ver.4.1.0】</p>
     </li>
   </ul>
 </div>
@@ -259,7 +259,6 @@ es.onmessage = e => {
       });
     }
 
-    // タブが隠れていても通知が届きやすくするための処理
     if ("Notification" in window && Notification.permission === "granted") {
       const lastReply = p.replies[p.replies.length - 1];
       if (lastReply && (Date.now() - lastReply.time) < 5000) {
@@ -277,18 +276,16 @@ es.onmessage = e => {
   if ("Notification" in window && Notification.permission === "granted") {
     new Notification("takei.net 新着投稿", { 
         body: p.user + "： " + p.text,
-        tag: "new-post",
-        requireInteraction: false // 自動で消えるように
+        tag: "new-post"
     });
   }
 };
 
 function containsNG(text){
-  const words = ["ちんちん","ちんco","まんこ","きんたま","チンチン","チンコ","マンコ","キンタマ"];
+  const words = ["ちんちん","ちんこ","まんこ","きんたま","チンチン","チンコ","マンコ","キンタマ"];
   return words.some(w=>text.includes(w));
 }
 
-// 修正：許可申請をバックグラウンドで走らせつつ、即座に投稿処理へ
 function postWithPermission() {
   checkPermission(); 
   post();
@@ -340,7 +337,7 @@ async function likePost(id){
 }
 
 function showReplyBox(id){
-  checkPermission(); // 返信時も許可を確認
+  checkPermission();
   const box = document.getElementById("replyBox-" + id);
   box.style.display = box.style.display === "none" ? "block" : "none";
 }
@@ -397,13 +394,11 @@ app.post("/post", async (req, res) => {
 
   const gasUrl = "https://script.google.com/macros/s/AKfycbyqUjSZDsU2kcob3XH6FIJTgYX9ApNQV6m9m_y2u77B_Eglw2ahw902YOK3k4d0UZxBbQ/exec";
 
-  // サーバー側からGASにデータを送信
   try {
     fetch(gasUrl, {
       method: "POST",
       body: JSON.stringify(post)
     });
-    console.log("GAS送信指示完了");
   } catch (err) {
     console.error("GAS保存失敗:", err);
   }
@@ -433,4 +428,10 @@ app.get("/events", requireAccess, (req, res) => {
   req.on("close", () => {
     clients = clients.filter((c) => c !== res);
   });
+});
+
+/* ===== 【追加した部分】サーバー起動の設定 ===== */
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`サーバーが起動しました: http://localhost:${PORT}`);
 });

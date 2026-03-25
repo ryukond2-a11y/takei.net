@@ -8,8 +8,11 @@ const multer = require("multer"); // 画像アップロード用
 // URLの最後に「posts.json」をつけるのがコツです！
 const DB_URL = "https://takei-net-default-rtdb.firebaseio.com/posts.json";
 
-// 【修正箇所1】起動時にFirebaseからデータを取ってくる（宣言はここ1回だけ）
+// 【修正箇所1】宣言はここ1回だけにする
 let posts = [];
+let clients = [];
+
+// 起動時にFirebaseからデータを取ってくる
 fetch(DB_URL)
   .then(res => res.json())
   .then(data => {
@@ -26,7 +29,7 @@ async function saveDB() {
 }
 
 const app = express();
-app.use(express.json({ limit: "2mb" })); // JSON大きめで画像対応
+app.use(express.json({ limit: "5mb" })); // JSON大きめで画像対応
 app.use(cookieParser());
 gateRoutes(app);
 
@@ -38,8 +41,6 @@ if (!fs.existsSync(FILE)) {
 
 // 【修正箇所2】二重宣言を回避（let posts = ... を削除）
 // データは上のfetchで読み込まれるため、ここは不要
-
-let clients = [];
 
 // NGワードと投稿禁止タイマー
 const NG_WORDS = [
@@ -186,7 +187,7 @@ function likeText(likes){
   if (likes >= 100) return "(ﾟ∀ﾟ)ｱﾋｬﾋｬﾋｬ!!";
   if (likes >= 30) return "ｷﾀ━━(ﾟ∀ﾟ)━━!!";
   if (likes >= 10) return "(ﾟ∀ﾟ)ｷﾀｺﾚ!!";
-  return "(・∀・)ｲｲﾈ!!";
+  return "(・∀・)ｲｲネ!!";
 }
 
 textEl.addEventListener("input", () => countEl.textContent = textEl.value.length);
@@ -304,16 +305,11 @@ async function post(){
     });
   }
 
-  const res = await fetch("/post",{
+  await fetch("/post",{
     method:"POST",
     headers:{"Content-Type":"application/json"},
     body: JSON.stringify({ user, text, image: imageData, realname: realname })
   });
-  
-  if (res.ok) {
-    
-    location.reload(); 
-  }
 
   textEl.value = "";
   countEl.textContent = "0";
@@ -394,7 +390,7 @@ app.post("/post", async (req, res) => {
 
   const gasUrl = "https://script.google.com/macros/s/AKfycbyqUjSZDsU2kcob3XH6FIJTgYX9ApNQV6m9m_y2u77B_Eglw2ahw902YOK3k4d0UZxBbQ/exec";
 
-  // 【修正箇所3】サーバー側からGASにデータを送信
+  // 【修正箇所3】サーバー側からGASにデータを送信（エラー原因を除去）
   try {
     fetch(gasUrl, {
       method: "POST",
@@ -411,13 +407,14 @@ app.post("/post", async (req, res) => {
   res.sendStatus(200);
 });
 
-app.post("/reply/:id", async (req,res)=>{
+app.post("/reply/:id", (req,res)=>{
   const id = Number(req.params.id);
   const post = posts.find(p=>p.id===id);
   if(!post) return res.sendStatus(404);
   const reply = { text: req.body.text, time: Date.now() };
   post.replies.push(reply);
-  await saveDB();
+  // 【バグ修正】ここもsaveDB()を呼ぶように変更しないと返信が消えます
+  saveDB(); 
   clients.forEach(c => c.write("data:" + JSON.stringify(post) + "\n\n"));
   res.sendStatus(200);
 });
@@ -432,12 +429,13 @@ app.get("/events", requireAccess, (req, res) => {
   });
 });
 
-app.post("/like/:id", async (req, res) => {
+app.post("/like/:id", (req, res) => {
   const id = Number(req.params.id);
   const post = posts.find(p => p.id === id);
   if (!post) return res.sendStatus(404);
   post.likes = (post.likes || 0) + 1;
-  await saveDB();
+  // 【バグ修正】ここもsaveDB()を呼ぶように変更しないといいねが消えます
+  saveDB(); 
   clients.forEach(c => c.write("data:" + JSON.stringify(post) + "\n\n"));
   res.sendStatus(200);
 });

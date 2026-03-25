@@ -63,68 +63,111 @@ app.get("/", requireAccess, (req, res) => {
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>takei.net</title>
 <style>
+/* モード切替用の変数追加 */
 :root {
-  --bg-color: #000;
-  --text-color: #e7e9ea;
-  --border-color: #2f3336;
+  --bg: #000;
+  --text: #e7e9ea;
+  --border: #2f3336;
   --input-bg: #000;
-  --secondary-text: #71767b;
   --reply-bg: #111;
-  --btn-color: #1d9bf0;
+  --secondary: #71767b;
 }
-
 body.light-mode {
-  --bg-color: #ffffff;
-  --text-color: #0f1419;
-  --border-color: #eff3f4;
-  --input-bg: #f7f9f9;
-  --secondary-text: #536471;
-  --reply-bg: #f7f9f9;
-  --btn-color: #1d9bf0;
+  --bg: #fff;
+  --text: #000;
+  --border: #ccc;
+  --input-bg: #fff;
+  --reply-bg: #eee;
+  --secondary: #555;
 }
 
 #notice {
   font-size: 12px;
   background-color: var(--input-bg);
-  color: var(--text-color);
+  color: var(--text);
   padding: 8px;
   border-radius: 6px;
   font-family: monospace;
-  border: 1px solid var(--border-color);
+  border: 1px solid var(--border);
 }
-#notice h2 { font-size: 14px; margin-bottom: 4px; }
-#notice ul { margin: 0; padding-left: 16px; }
-#notice li { margin-bottom: 2px; }
-body { background: var(--bg-color); color: var(--text-color); font-family: system-ui, sans-serif; max-width: 600px; margin: auto; padding: 16px; transition: background 0.3s, color 0.3s; }
-input, textarea { width: 100%; padding: 10px; background: var(--input-bg); color: var(--text-color); border: 1px solid var(--border-color); border-radius: 6px; margin-bottom: 8px; box-sizing: border-box; }
+#notice h2 {
+  font-size: 14px;
+  margin-bottom: 4px;
+}
+#notice ul {
+  margin: 0;
+  padding-left: 16px;
+}
+#notice li {
+  margin-bottom: 2px;
+}
+body { background: var(--bg); color: var(--text); font-family: system-ui, sans-serif; max-width: 600px; margin: auto; padding: 16px; transition: 0.3s; }
+input, textarea { width: 100%; padding: 10px; background: var(--input-bg); color: var(--text); border: 1px solid var(--border); border-radius: 6px; margin-bottom: 8px; }
 textarea { resize: none; height: 80px; }
-button { background: var(--btn-color); color: #fff; border: none; border-radius: 999px; padding: 8px 16px; font-weight: bold; cursor: pointer; }
-.counter { text-align: right; color: var(--secondary-text); font-size: 12px; margin-bottom: 8px; }
-li { list-style: none; border-bottom: 1px solid var(--border-color); padding: 12px 0; display: flex; flex-direction: column; }
-small { color: var(--secondary-text); }
+button { background: #1d9bf0; color: #fff; border: none; border-radius: 999px; padding: 8px 16px; font-weight: bold; cursor: pointer; }
+.deleteBtn { background: #f33; margin-left: 10px; }
+.counter { text-align: right; color: var(--secondary); font-size: 12px; margin-bottom: 8px; }
+li { list-style: none; border-bottom: 1px solid var(--border); padding: 12px 0; display: flex; flex-direction: column; }
+small { color: var(--secondary); }
 img { max-width: 100%; margin-top: 8px; border-radius: 6px; }
 
-.mode-toggle {
-  position: sticky; top: 10px; float: right; z-index: 100;
-  background: var(--input-bg); color: var(--text-color); border: 1px solid var(--border-color);
-  padding: 5px 12px; border-radius: 20px; font-size: 12px;
+/* モード切替ボタン */
+.theme-btn {
+  float: right;
+  background: var(--border);
+  font-size: 12px;
+  padding: 4px 12px;
+  margin-bottom: 10px;
 }
 
-.actions { margin-top: 6px; display: flex; justify-content: flex-end; gap: 8px; }
-.actions button { background: transparent; color: var(--secondary-text); border: none; padding: 0; font-size: 12px; cursor: pointer; }
-.replies {
-  margin-left: 16px; border-left: 2px solid var(--border-color); padding-left: 8px; margin-top: 8px;
-  font-size: 0.9em; background-color: var(--reply-bg); border-radius: 6px;
+.actions {
+  margin-top: 6px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
 }
-.replies div { padding: 4px 0; border-bottom: 1px solid var(--border-color); }
-[id^="replyBox-"] { margin-left: 16px; margin-top: 4px; }
-[id^="replyBox-"] input { width: calc(100% - 70px); display: inline-block; }
-[id^="replyBox-"] button { display: inline-block; margin-left: 4px; padding: 4px 8px; font-size: 0.8em; }
+.actions button {
+  background: transparent;
+  color: var(--secondary);
+  border: none;
+  padding: 0;
+  font-size: 12px;
+  cursor: pointer;   
+}
+.replies {
+  margin-left: 16px;
+  border-left: 2px solid var(--border);
+  padding-left: 8px;
+  margin-top: 8px;
+  font-size: 0.9em;
+  background-color: var(--reply-bg);
+  border-radius: 6px;
+}
+.replies div {
+  padding: 4px 0;
+  border-bottom: 1px solid var(--border);
+}
+[id^="replyBox-"] {
+  margin-left: 16px;
+  margin-top: 4px;
+}
+[id^="replyBox-"] input {
+  width: calc(100% - 60px);
+  display: inline-block;
+}
+[id^="replyBox-"] button {
+  display: inline-block;
+  margin-left: 4px;
+  padding: 4px 8px;
+  font-size: 0.8em;
+  cursor: pointer;
+}
+.alert-text { color: #ff4d4d; font-weight: bold; }
 </style>
 </head>
 <body>
 
-<button class="mode-toggle" onclick="toggleMode()">モード切替</button>
+<button class="theme-btn" onclick="toggleMode()">モード切替</button>
 
 <div class="header">
   <h1>takei.net</h1>
@@ -134,12 +177,13 @@ img { max-width: 100%; margin-top: 8px; border-radius: 6px; }
   <h2>お知らせ</h2>
   <ul>
     <li>
-      <p>【Ver.4.1.1】いいね機能の修正、通知・ダークモード切替を統合しました。</p>
+      <p>【通知が出るようにりました。】</br>投稿できない場合は画面右上のURLの左の南京錠マークをクリックし、【このサイトに対する権限】をクリックし、【通知】を許可にすることをお願いいたします。</br>３月４日は午前8時00分から利用ができ、午後4時以降はメンテナンスのため利用を一時停止することがあります。●バグについて：スマートフォンにて画像の投稿ができないバグを発見し、対処しています。未知のバグを発見した場合は根田までお知らせください。【Ver.4.1.0】</p>
     </li>
   </ul>
 </div>
 
 <div class="header">
+  <h1></h1>
   <input id="realname" class="search" placeholder="本名(表示されません)">
 </div>
 
@@ -158,19 +202,23 @@ const userEl = document.getElementById("user");
 const imageEl = document.getElementById("image");
 const realnameEl = document.getElementById("realname");
 
+// テーマ切替
 function toggleMode() {
   document.body.classList.toggle("light-mode");
   localStorage.setItem("theme", document.body.classList.contains("light-mode") ? "light" : "dark");
 }
-if (localStorage.getItem("theme") === "light") document.body.classList.add("light-mode");
+if(localStorage.getItem("theme") === "light") document.body.classList.add("light-mode");
 
-function checkPermission() {
+// 通知許可を確実に求める関数（awaitを外して投稿を止めないように修正）
+async function checkPermission() {
   if ("Notification" in window && Notification.permission === "default") {
     Notification.requestPermission();
   }
 }
 
 function likeText(likes){
+  if (likes >= 10000000) return "ちんちんまんまんオナニーセックス";
+  if (likes >= 1000) return "イキスギィ";
   if (likes >= 100) return "(ﾟ∀ﾟ)ｱﾋｬﾋｬﾋｬ!!";
   if (likes >= 30) return "ｷﾀ━━(ﾟ∀ﾟ)━━!!";
   if (likes >= 10) return "(ﾟ∀ﾟ)ｷﾀｺレ!!";
@@ -180,18 +228,27 @@ function likeText(likes){
 textEl.addEventListener("input", () => countEl.textContent = textEl.value.length);
 
 function escape(str) {
-  return str.replace(/[&<>"']/g, c => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c]));
+  return str.replace(/[&<>"']/g, c =>
+    ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c])
+  );
 }
 
 function addPost(p, prepend = true) {
   const li = document.createElement("li");
-  li.dataset.id = p.id;
   let imgHTML = p.image ? "<img src='" + p.image + "'>" : "";
 
   let repliesHTML = "";
-  (p.replies || []).forEach(r => {
-    repliesHTML += "<div class='reply'>" + escape(r.text) + "<br><small>" + new Date(r.time).toLocaleString() + "</small></div>";
-  });
+  if (p.replies && p.replies.length > 0) {
+    p.replies.forEach(r => {
+      repliesHTML +=
+        "<div class='reply'>" +
+          escape(r.text) +
+          "<br><small>" +
+          new Date(r.time).toLocaleString() +
+          "</small>" +
+        "</div>";
+    });
+  }
 
   li.innerHTML =
     "<b>" + escape(p.user) + "</b><br>" +
@@ -204,13 +261,16 @@ function addPost(p, prepend = true) {
         "<span class='likeCount'>" + (p.likes ?? 0) + "</span>" +
       "</button>" +
     "</div>" +
-    "<div class='replies' id='replies-" + p.id + "'>" + repliesHTML + "</div>" +
+    "<div class='replies' id='replies-" + p.id + "'>" +
+      repliesHTML +
+    "</div>" +
     "<button onclick='showReplyBox(" + p.id + ")'>返信</button>" +
     "<div id='replyBox-" + p.id + "' style='display:none;'>" +
       "<input id='replyInput-" + p.id + "' placeholder='返信を書く'>" +
       "<button onclick='sendReply(" + p.id + ")'>送信</button>" +
     "</div>";
 
+  li.dataset.id = p.id;
   const list = document.getElementById("posts");
   prepend ? list.prepend(li) : list.append(li);
 }
@@ -225,23 +285,42 @@ const es = new EventSource("/events");
 es.onmessage = e => {
   const p = JSON.parse(e.data);
   const existing = document.querySelector("li[data-id='" + p.id + "']");
+
   if (existing) {
     existing.querySelector(".likeCount").textContent = p.likes ?? 0;
     existing.querySelector(".likeText").textContent = likeText(p.likes ?? 0);
     const repliesDiv = existing.querySelector(".replies");
-    repliesDiv.innerHTML = "";
-    (p.replies || []).forEach(r => {
-      repliesDiv.innerHTML += "<div class='reply'>" + escape(r.text) + "<br><small>" + new Date(r.time).toLocaleString() + "</small></div>";
-    });
+    if (repliesDiv) {
+      repliesDiv.innerHTML = "";
+      (p.replies || []).forEach(r => {
+        repliesDiv.innerHTML += "<div class='reply'>" + escape(r.text) + "<br><small>" + new Date(r.time).toLocaleString() + "</small></div>";
+      });
+    }
+
+    if ("Notification" in window && Notification.permission === "granted") {
+      const lastReply = p.replies[p.replies.length - 1];
+      if (lastReply && (Date.now() - lastReply.time) < 5000) {
+        new Notification("返信が届きました", { body: lastReply.text, tag: "reply", renotify: true });
+      }
+    }
     return;
   }
+
   addPost(p, true);
   if ("Notification" in window && Notification.permission === "granted") {
-    new Notification("takei.net 新着投稿", { body: p.user + "： " + p.text, tag: "new-post" });
+    new Notification("takei.net 新着投稿", { body: p.user + "： " + p.text, tag: "post", renotify: true });
   }
 };
 
-function postWithPermission() { checkPermission(); post(); }
+function containsNG(text){
+  const words = ["ちんちん","ちんこ","まんこ","きんたま","チンチン","チンコ","マンコ","キンタマ"];
+  return words.some(w=>text.includes(w));
+}
+
+async function postWithPermission() {
+  checkPermission(); // 許可を求めつつ
+  post(); // 投稿を実行
+}
 
 async function post(){
   const user = userEl.value.trim() || "匿名";
@@ -249,13 +328,14 @@ async function post(){
   const realname = realnameEl.value.trim();
   if (!realname) { alert("本名を入力してください"); return; }
   if (!text) return;
-  
+  if(containsNG(text)){ alert("下ネタなんか書くなよｗｗｗ"); return; }
+
   let imageData = null;
   if(imageEl.files[0]){
     const file = imageEl.files[0];
-    imageData = await new Promise(r => {
+    imageData = await new Promise((resolve)=>{
       const reader = new FileReader();
-      reader.onload = () => r(reader.result);
+      reader.onload = ()=> resolve(reader.result);
       reader.readAsDataURL(file);
     });
   }
@@ -263,16 +343,31 @@ async function post(){
   await fetch("/post",{
     method:"POST",
     headers:{"Content-Type":"application/json"},
-    body: JSON.stringify({ user, text, image: imageData, realname })
+    body: JSON.stringify({ user, text, image: imageData, realname: realname })
   });
-  textEl.value = ""; countEl.textContent = "0"; imageEl.value = "";
+
+  textEl.value = "";
+  countEl.textContent = "0";
+  imageEl.value = "";
+  textEl.blur();
 }
+
+const searchEl = document.querySelector(".search");
+searchEl.addEventListener("input", () => {
+  const query = searchEl.value.toLowerCase();
+  const list = document.getElementById("posts");
+  const items = list.querySelectorAll("li");
+  items.forEach(li => {
+    const text = li.textContent.toLowerCase();
+    li.style.display = text.includes(query) ? "" : "none";
+  });
+});
 
 async function likePost(id){
   await fetch("/like/" + id, { method: "POST" });
 }
 
-function showReplyBox(id){
+async function showReplyBox(id){
   checkPermission();
   const box = document.getElementById("replyBox-" + id);
   box.style.display = box.style.display === "none" ? "block" : "none";
@@ -282,9 +377,15 @@ async function sendReply(id){
   const input = document.getElementById("replyInput-" + id);
   const text = input.value.trim();
   if(!text) return;
-  await fetch("/reply/" + id, { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ text }) });
+  await fetch("/reply/" + id,{
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body: JSON.stringify({ text })
+  });
   input.value = "";
 }
+
+document.addEventListener('click', checkPermission, { once: true });
 
 load();
 </script>
@@ -295,26 +396,59 @@ load();
 
 /* ===== API ===== */
 app.get("/posts", (req, res) => {
-  res.json(posts.slice().sort((a, b) => a.time - b.time));
+  const sortedPosts = posts
+    .map((p, i) => ({ ...p, index: i }))
+    .sort((a, b) => a.time - b.time);
+  res.json(sortedPosts);
 });
 
 app.post("/post", async (req, res) => { 
   const { user, text, image, realname } = req.body;
   if (!text?.trim()) return res.sendStatus(400);
-  const post = { id: Date.now(), user: user || "匿名", realname: realname || "", text: text.trim().slice(0, 140), image: image || null, time: Date.now(), likes: 0, replies: [] };
+  if (NG_WORDS.some((w) => text.includes(w))) {
+    bannedUsers[user] = Date.now();
+    return res.sendStatus(400);
+  }
+  if (bannedUsers[user] && Date.now() - bannedUsers[user] < 60000) {
+    return res.status(429).send("1分間投稿禁止中です");
+  }
+  const post = {
+    id: Date.now(), 
+    user: user || "匿名",
+    realname: realname.trim(),
+    text: text.trim().slice(0, 140),
+    image: image || null,
+    time: Date.now(),
+    likes: 0,
+    replies: []
+  };
+
+  const gasUrl = "https://script.google.com/macros/s/AKfycbyqUjSZDsU2kcob3XH6FIJTgYX9ApNQV6m9m_y2u77B_Eglw2ahw902YOK3k4d0UZxBbQ/exec";
+
+  // サーバー側からGASにデータを送信
+  try {
+    fetch(gasUrl, {
+      method: "POST",
+      body: JSON.stringify(post)
+    });
+    console.log("GAS送信指示完了");
+  } catch (err) {
+    console.error("GAS保存失敗:", err);
+  }
+
   posts.unshift(post);
   await saveDB(); 
-  clients.forEach(c => c.write("data:" + JSON.stringify(post) + "\n\n"));
+  clients.forEach((c) => c.write("data:" + JSON.stringify(post) + "\n\n"));
   res.sendStatus(200);
 });
 
-// 【修正箇所】いいねを受け取るAPIを追加
+// いいねAPIの維持
 app.post("/like/:id", async (req, res) => {
   const id = Number(req.params.id);
   const post = posts.find(p => p.id === id);
   if (post) {
     post.likes = (post.likes || 0) + 1;
-    saveDB();
+    await saveDB();
     clients.forEach(c => c.write("data:" + JSON.stringify(post) + "\n\n"));
     res.sendStatus(200);
   } else {
@@ -338,8 +472,13 @@ app.get("/events", requireAccess, (req, res) => {
   res.setHeader("Cache-Control", "no-cache");
   res.setHeader("Connection", "keep-alive");
   clients.push(res);
-  req.on("close", () => { clients = clients.filter(c => c !== res); });
+  req.on("close", () => {
+    clients = clients.filter((c) => c !== res);
+  });
 });
 
+/* ===== サーバー起動の設定 ===== */
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+app.listen(PORT, () => {
+  console.log(`サーバーが起動しました: http://localhost:${PORT}`);
+});

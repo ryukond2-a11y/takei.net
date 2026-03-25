@@ -54,10 +54,6 @@ const NG_WORDS = [
   "キンタマ",
 ];
 let bannedUsers = {}; // { username: timestamp }
-// 【追加】削除用パスワード
-const DELETE_PASSWORD = "1234"; // ←好きなパスワードに変更
-const upload = multer({ storage: multer.memoryStorage() });
-
 /* ===== 画面 ===== */
 app.get("/", requireAccess, (req, res) => {
   res.send(`<!DOCTYPE html>
@@ -445,14 +441,15 @@ function addPost(p, prepend = true) {
     imgHTML +
     "<small>" + new Date(p.time).toLocaleString() + "</small>" +
     "<div class='actions'>" +
-  "<button onclick='likePost(" + p.id + ")'>" +
-    "<span class='likeText'>" + likeText(p.likes ?? 0) + "</span> " +
-    "<span class='likeCount'>" + (p.likes ?? 0) + "</span>" +
-  "</button>" +
-  "<button onclick='deletePost(" + p.id + ")' style='color:red;'>削除</button>" +
+
+      "<button onclick='likePost(" + p.id + ")'>" +
+
         "<span class='likeText'>" + likeText(p.likes ?? 0) + "</span> " +
+
         "<span class='likeCount'>" + (p.likes ?? 0) + "</span>" +
+
       "</button>" +
+
     "</div>" +
     "<div class='replies' id='replies-" + p.id + "'>" +
       repliesHTML +

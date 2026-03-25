@@ -171,10 +171,10 @@ const userEl = document.getElementById("user");
 const imageEl = document.getElementById("image");
 const realnameEl = document.getElementById("realname");
 
-// 通知許可を確実に求める関数
-async function checkPermission() {
+// 通知許可を求める（投稿を妨げない）
+function checkPermission() {
   if ("Notification" in window && Notification.permission === "default") {
-    await Notification.requestPermission();
+    Notification.requestPermission();
   }
 }
 
@@ -183,7 +183,7 @@ function likeText(likes){
   if (likes >= 1000) return "イキスギィ";
   if (likes >= 100) return "(ﾟ∀ﾟ)ｱﾋｬﾋｬﾋｬ!!";
   if (likes >= 30) return "ｷﾀ━━(ﾟ∀ﾟ)━━!!";
-  if (likes >= 10) return "(ﾟ∀ﾟ)ｷﾀｺﾚ!!";
+  if (likes >= 10) return "(ﾟ∀ﾟ)ｷﾀｺレ!!";
   return "(・∀・)ｲｲネ!!";
 }
 
@@ -259,10 +259,15 @@ es.onmessage = e => {
       });
     }
 
+    // タブが隠れていても通知が届きやすくするための処理
     if ("Notification" in window && Notification.permission === "granted") {
       const lastReply = p.replies[p.replies.length - 1];
       if (lastReply && (Date.now() - lastReply.time) < 5000) {
-        new Notification("返信が届きました", { body: lastReply.text });
+        new Notification("返信が届きました", { 
+            body: lastReply.text,
+            tag: "reply-" + p.id,
+            renotify: true 
+        });
       }
     }
     return;
@@ -270,17 +275,22 @@ es.onmessage = e => {
 
   addPost(p, true);
   if ("Notification" in window && Notification.permission === "granted") {
-    new Notification("takei.net 新着投稿", { body: p.user + "： " + p.text });
+    new Notification("takei.net 新着投稿", { 
+        body: p.user + "： " + p.text,
+        tag: "new-post",
+        requireInteraction: false // 自動で消えるように
+    });
   }
 };
 
 function containsNG(text){
-  const words = ["ちんちん","ちんこ","まんこ","きんたま","チンチン","チンコ","マンコ","キンタマ"];
+  const words = ["ちんちん","ちんco","まんこ","きんたま","チンチン","チンコ","マンコ","キンタマ"];
   return words.some(w=>text.includes(w));
 }
 
-async function postWithPermission() {
-  await checkPermission();
+// 修正：許可申請をバックグラウンドで走らせつつ、即座に投稿処理へ
+function postWithPermission() {
+  checkPermission(); 
   post();
 }
 
@@ -329,8 +339,8 @@ async function likePost(id){
   await fetch("/like/" + id, { method: "POST" });
 }
 
-async function showReplyBox(id){
-  await checkPermission();
+function showReplyBox(id){
+  checkPermission(); // 返信時も許可を確認
   const box = document.getElementById("replyBox-" + id);
   box.style.display = box.style.display === "none" ? "block" : "none";
 }
@@ -423,20 +433,4 @@ app.get("/events", requireAccess, (req, res) => {
   req.on("close", () => {
     clients = clients.filter((c) => c !== res);
   });
-});
-
-app.post("/like/:id", (req, res) => {
-  const id = Number(req.params.id);
-  const post = posts.find(p => p.id === id);
-  if (!post) return res.sendStatus(404);
-  post.likes = (post.likes || 0) + 1;
-  saveDB(); 
-  clients.forEach(c => c.write("data:" + JSON.stringify(post) + "\n\n"));
-  res.sendStatus(200);
-});
-
-const PORT = process.env.PORT || 3000;
-
-app.listen(PORT, () => {
-  console.log("takei.net running");
 });

@@ -63,32 +63,36 @@ app.get("/", requireAccess, (req, res) => {
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>takei.net</title>
 <style>
-/* モード切替用の変数追加 */
+/* カラー変数の定義 */
 :root {
-  --bg: #000;
-  --text: #e7e9ea;
-  --border: #2f3336;
+  --bg-color: #000;
+  --text-color: #e7e9ea;
+  --border-color: #2f3336;
   --input-bg: #000;
+  --secondary-text: #71767b;
   --reply-bg: #111;
-  --secondary: #71767b;
+  --btn-color: #1d9bf0;
 }
+
+/* ライトモード（ホワイトモード）の定義 */
 body.light-mode {
-  --bg: #fff;
-  --text: #000;
-  --border: #ccc;
-  --input-bg: #fff;
-  --reply-bg: #eee;
-  --secondary: #555;
+  --bg-color: #ffffff;
+  --text-color: #0f1419;
+  --border-color: #eff3f4;
+  --input-bg: #f7f9f9;
+  --secondary-text: #536471;
+  --reply-bg: #f7f9f9;
+  --btn-color: #1d9bf0;
 }
 
 #notice {
   font-size: 12px;
   background-color: var(--input-bg);
-  color: var(--text);
+  color: var(--text-color);
   padding: 8px;
   border-radius: 6px;
   font-family: monospace;
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-color);
 }
 #notice h2 {
   font-size: 14px;
@@ -101,23 +105,28 @@ body.light-mode {
 #notice li {
   margin-bottom: 2px;
 }
-body { background: var(--bg); color: var(--text); font-family: system-ui, sans-serif; max-width: 600px; margin: auto; padding: 16px; transition: 0.3s; }
-input, textarea { width: 100%; padding: 10px; background: var(--input-bg); color: var(--text); border: 1px solid var(--border); border-radius: 6px; margin-bottom: 8px; }
+body { background: var(--bg-color); color: var(--text-color); font-family: system-ui, sans-serif; max-width: 600px; margin: auto; padding: 16px; transition: background 0.3s, color 0.3s; }
+input, textarea { width: 100%; padding: 10px; background: var(--input-bg); color: var(--text-color); border: 1px solid var(--border-color); border-radius: 6px; margin-bottom: 8px; box-sizing: border-box; }
 textarea { resize: none; height: 80px; }
-button { background: #1d9bf0; color: #fff; border: none; border-radius: 999px; padding: 8px 16px; font-weight: bold; cursor: pointer; }
+button { background: var(--btn-color); color: #fff; border: none; border-radius: 999px; padding: 8px 16px; font-weight: bold; cursor: pointer; }
 .deleteBtn { background: #f33; margin-left: 10px; }
-.counter { text-align: right; color: var(--secondary); font-size: 12px; margin-bottom: 8px; }
-li { list-style: none; border-bottom: 1px solid var(--border); padding: 12px 0; display: flex; flex-direction: column; }
-small { color: var(--secondary); }
+.counter { text-align: right; color: var(--secondary-text); font-size: 12px; margin-bottom: 8px; }
+li { list-style: none; border-bottom: 1px solid var(--border-color); padding: 12px 0; display: flex; flex-direction: column; }
+small { color: var(--secondary-text); }
 img { max-width: 100%; margin-top: 8px; border-radius: 6px; }
 
 /* モード切替ボタン */
-.theme-btn {
+.mode-toggle {
+  position: sticky;
+  top: 10px;
   float: right;
-  background: var(--border);
+  z-index: 100;
+  background: var(--input-bg);
+  color: var(--text-color);
+  border: 1px solid var(--border-color);
+  padding: 5px 12px;
+  border-radius: 20px;
   font-size: 12px;
-  padding: 4px 12px;
-  margin-bottom: 10px;
 }
 
 .actions {
@@ -128,7 +137,7 @@ img { max-width: 100%; margin-top: 8px; border-radius: 6px; }
 }
 .actions button {
   background: transparent;
-  color: var(--secondary);
+  color: var(--secondary-text);
   border: none;
   padding: 0;
   font-size: 12px;
@@ -136,7 +145,7 @@ img { max-width: 100%; margin-top: 8px; border-radius: 6px; }
 }
 .replies {
   margin-left: 16px;
-  border-left: 2px solid var(--border);
+  border-left: 2px solid var(--border-color);
   padding-left: 8px;
   margin-top: 8px;
   font-size: 0.9em;
@@ -145,14 +154,14 @@ img { max-width: 100%; margin-top: 8px; border-radius: 6px; }
 }
 .replies div {
   padding: 4px 0;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--border-color);
 }
 [id^="replyBox-"] {
   margin-left: 16px;
   margin-top: 4px;
 }
 [id^="replyBox-"] input {
-  width: calc(100% - 60px);
+  width: calc(100% - 70px);
   display: inline-block;
 }
 [id^="replyBox-"] button {
@@ -167,7 +176,7 @@ img { max-width: 100%; margin-top: 8px; border-radius: 6px; }
 </head>
 <body>
 
-<button class="theme-btn" onclick="toggleMode()">モード切替</button>
+<button class="mode-toggle" onclick="toggleMode()">モード切替</button>
 
 <div class="header">
   <h1>takei.net</h1>
@@ -202,15 +211,19 @@ const userEl = document.getElementById("user");
 const imageEl = document.getElementById("image");
 const realnameEl = document.getElementById("realname");
 
-// テーマ切替
+// モード切替の関数
 function toggleMode() {
   document.body.classList.toggle("light-mode");
-  localStorage.setItem("theme", document.body.classList.contains("light-mode") ? "light" : "dark");
+  const isLight = document.body.classList.contains("light-mode");
+  localStorage.setItem("theme", isLight ? "light" : "dark");
 }
-if(localStorage.getItem("theme") === "light") document.body.classList.add("light-mode");
 
-// 通知許可を確実に求める関数（awaitを外して投稿を止めないように修正）
-async function checkPermission() {
+// 保存されたテーマの読み込み
+if (localStorage.getItem("theme") === "light") {
+  document.body.classList.add("light-mode");
+}
+
+function checkPermission() {
   if ("Notification" in window && Notification.permission === "default") {
     Notification.requestPermission();
   }
@@ -300,7 +313,11 @@ es.onmessage = e => {
     if ("Notification" in window && Notification.permission === "granted") {
       const lastReply = p.replies[p.replies.length - 1];
       if (lastReply && (Date.now() - lastReply.time) < 5000) {
-        new Notification("返信が届きました", { body: lastReply.text, tag: "reply", renotify: true });
+        new Notification("返信が届きました", { 
+            body: lastReply.text,
+            tag: "reply-" + p.id,
+            renotify: true 
+        });
       }
     }
     return;
@@ -308,7 +325,10 @@ es.onmessage = e => {
 
   addPost(p, true);
   if ("Notification" in window && Notification.permission === "granted") {
-    new Notification("takei.net 新着投稿", { body: p.user + "： " + p.text, tag: "post", renotify: true });
+    new Notification("takei.net 新着投稿", { 
+        body: p.user + "： " + p.text,
+        tag: "new-post"
+    });
   }
 };
 
@@ -317,9 +337,9 @@ function containsNG(text){
   return words.some(w=>text.includes(w));
 }
 
-async function postWithPermission() {
-  checkPermission(); // 許可を求めつつ
-  post(); // 投稿を実行
+function postWithPermission() {
+  checkPermission(); 
+  post();
 }
 
 async function post(){
@@ -367,7 +387,7 @@ async function likePost(id){
   await fetch("/like/" + id, { method: "POST" });
 }
 
-async function showReplyBox(id){
+function showReplyBox(id){
   checkPermission();
   const box = document.getElementById("replyBox-" + id);
   box.style.display = box.style.display === "none" ? "block" : "none";
@@ -425,13 +445,11 @@ app.post("/post", async (req, res) => {
 
   const gasUrl = "https://script.google.com/macros/s/AKfycbyqUjSZDsU2kcob3XH6FIJTgYX9ApNQV6m9m_y2u77B_Eglw2ahw902YOK3k4d0UZxBbQ/exec";
 
-  // サーバー側からGASにデータを送信
   try {
     fetch(gasUrl, {
       method: "POST",
       body: JSON.stringify(post)
     });
-    console.log("GAS送信指示完了");
   } catch (err) {
     console.error("GAS保存失敗:", err);
   }
@@ -442,7 +460,7 @@ app.post("/post", async (req, res) => {
   res.sendStatus(200);
 });
 
-// いいねAPIの維持
+// --- 【修正点】ここからいいね機能のAPI ---
 app.post("/like/:id", async (req, res) => {
   const id = Number(req.params.id);
   const post = posts.find(p => p.id === id);
@@ -455,6 +473,7 @@ app.post("/like/:id", async (req, res) => {
     res.sendStatus(404);
   }
 });
+// --- 【修正点】ここまで ---
 
 app.post("/reply/:id", (req,res)=>{
   const id = Number(req.params.id);

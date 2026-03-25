@@ -384,7 +384,7 @@ app.post("/post", async (req, res) => {
     likes: 0,
     replies: []
   };
-  const gasUrl = "ここにコピーしたウェブアプリのURLを貼る";
+  const gasUrl = "https://script.google.com/macros/s/AKfycbyqUjSZDsU2kcob3XH6FIJTgYX9ApNQV6m9m_y2u77B_Eglw2ahw902YOK3k4d0UZxBbQ/exec";
 
 fetch(gasUrl, {
     method: "POST",

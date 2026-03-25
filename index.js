@@ -311,7 +311,7 @@ async function post(){
   });
   
   if (res.ok) {
-    alert("投稿が保存されました！");
+    
     location.reload(); 
   }
 

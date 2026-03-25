@@ -4,10 +4,11 @@ const fs = require("fs");
 const path = require("path");
 const cookieParser = require("cookie-parser");
 const multer = require("multer"); // 画像アップロード用
+
 // URLの最後に「posts.json」をつけるのがコツです！
 const DB_URL = "https://console.firebase.google.com/project/takei-net/database/takei-net-default-rtdb/data/~2F/posts.json";
 
-// 起動時にFirebaseからデータを取ってくる
+// 【修正箇所1】起動時にFirebaseからデータを取ってくる（宣言はここ1回だけ）
 let posts = [];
 fetch(DB_URL)
   .then(res => res.json())
@@ -23,6 +24,7 @@ async function saveDB() {
     body: JSON.stringify(posts)
   });
 }
+
 const app = express();
 app.use(express.json({ limit: "2mb" })); // JSON大きめで画像対応
 app.use(cookieParser());
@@ -34,6 +36,10 @@ if (!fs.existsSync(FILE)) {
   fs.writeFileSync(FILE, "[]");
 }
 
+// 【修正箇所2】二重宣言を回避（let posts = ... を削除）
+// データは上のfetchで読み込まれるため、ここは不要
+
+let clients = [];
 
 // NGワードと投稿禁止タイマー
 const NG_WORDS = [
@@ -298,11 +304,16 @@ async function post(){
     });
   }
 
-  await fetch("/post",{
+  const res = await fetch("/post",{
     method:"POST",
     headers:{"Content-Type":"application/json"},
     body: JSON.stringify({ user, text, image: imageData, realname: realname })
   });
+  
+  if (res.ok) {
+    alert("投稿が保存されました！");
+    location.reload(); 
+  }
 
   textEl.value = "";
   countEl.textContent = "0";
@@ -380,38 +391,33 @@ app.post("/post", async (req, res) => {
     likes: 0,
     replies: []
   };
+
   const gasUrl = "https://script.google.com/macros/s/AKfycbyqUjSZDsU2kcob3XH6FIJTgYX9ApNQV6m9m_y2u77B_Eglw2ahw902YOK3k4d0UZxBbQ/exec";
 
-fetch(gasUrl, {
-    method: "POST",
-    mode: "no-cors", // セキュリティエラー回避
-    headers: {
-        "Content-Type": "application/json"
-    },
-    body: JSON.stringify(post)
-})
-.then(() => {
-    console.log("スプレッドシートへ保存完了");
-    // ここで「投稿されました！」などのメッセージを出すか、リロードする
-    alert("投稿が保存されました！");
-    location.reload(); 
-})
-.catch(err => {
-    console.error("保存失敗:", err);
-});
-posts.unshift(post);
-  await saveDB(); // これでOK！
+  // 【修正箇所3】サーバー側からGASにデータを送信
+  try {
+    fetch(gasUrl, {
+      method: "POST",
+      body: JSON.stringify(post)
+    });
+    console.log("GAS送信指示完了");
+  } catch (err) {
+    console.error("GAS保存失敗:", err);
+  }
+
+  posts.unshift(post);
+  await saveDB(); 
   clients.forEach((c) => c.write("data:" + JSON.stringify(post) + "\n\n"));
   res.sendStatus(200);
 });
 
-app.post("/reply/:id", (req,res)=>{
+app.post("/reply/:id", async (req,res)=>{
   const id = Number(req.params.id);
   const post = posts.find(p=>p.id===id);
   if(!post) return res.sendStatus(404);
   const reply = { text: req.body.text, time: Date.now() };
   post.replies.push(reply);
-  fs.writeFileSync(FILE, JSON.stringify(posts,null,2));
+  await saveDB();
   clients.forEach(c => c.write("data:" + JSON.stringify(post) + "\n\n"));
   res.sendStatus(200);
 });
@@ -426,17 +432,15 @@ app.get("/events", requireAccess, (req, res) => {
   });
 });
 
-app.post("/like/:id", (req, res) => {
+app.post("/like/:id", async (req, res) => {
   const id = Number(req.params.id);
   const post = posts.find(p => p.id === id);
   if (!post) return res.sendStatus(404);
   post.likes = (post.likes || 0) + 1;
-  fs.writeFileSync(FILE, JSON.stringify(posts, null, 2));
+  await saveDB();
   clients.forEach(c => c.write("data:" + JSON.stringify(post) + "\n\n"));
   res.sendStatus(200);
 });
-
-
 
 const PORT = process.env.PORT || 3000;
 

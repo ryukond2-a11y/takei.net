@@ -33,11 +33,7 @@ const FILE = path.join(__dirname, "posts.json");
 if (!fs.existsSync(FILE)) {
   fs.writeFileSync(FILE, "[]");
 }
-// 投稿データ
-let posts = fs.existsSync(FILE)
-  ? JSON.parse(fs.readFileSync(FILE, "utf8"))
-  : [];
-let clients = [];
+
 
 // NGワードと投稿禁止タイマー
 const NG_WORDS = [

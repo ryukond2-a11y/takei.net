@@ -12,20 +12,30 @@ const DB_URL = "https://takei-net-default-rtdb.firebaseio.com/posts.json";
 let posts = [];
 let clients = [];
 
-// 起動時にFirebaseからデータを取ってくる
-fetch(DB_URL)
-  .then(res => res.json())
-  .then(data => {
+// 【修正】起動時にFirebaseからデータを取ってくる（確実にするためasync化）
+async function initDB() {
+  try {
+    const res = await fetch(DB_URL);
+    const data = await res.json();
     posts = data || [];
     console.log("Firebase同期完了！");
-  });
+  } catch (err) {
+    console.error("初期ロード失敗:", err);
+  }
+}
+initDB();
 
-// 保存用の関数を作る
+// 【修正】保存用の関数（ヘッダーを追加し、完了を待機できるように変更）
 async function saveDB() {
-  await fetch(DB_URL, {
-    method: "PUT",
-    body: JSON.stringify(posts)
-  });
+  try {
+    await fetch(DB_URL, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(posts)
+    });
+  } catch (err) {
+    console.error("保存失敗:", err);
+  }
 }
 
 const app = express();
@@ -255,10 +265,10 @@ function addPost(p, prepend = true) {
     p.replies.forEach(r => {
       repliesHTML +=
         "<div class='reply'>" +
-          escape(r.text) +
-          "<br><small>" +
-          new Date(r.time).toLocaleString() +
-          "</small>" +
+        escape(r.text) +
+        "<br><small>" +
+        new Date(r.time).toLocaleString() +
+        "</small>" +
         "</div>";
     });
   }
@@ -422,6 +432,7 @@ app.get("/posts", (req, res) => {
   res.json(sortedPosts);
 });
 
+// 【修正】await saveDB() を追加
 app.post("/post", async (req, res) => { 
   const { user, text, image, realname } = req.body;
   if (!text?.trim()) return res.sendStatus(400);
@@ -460,7 +471,7 @@ app.post("/post", async (req, res) => {
   res.sendStatus(200);
 });
 
-// --- 【修正点】ここからいいね機能のAPI ---
+// 【修正】await saveDB() を追加
 app.post("/like/:id", async (req, res) => {
   const id = Number(req.params.id);
   const post = posts.find(p => p.id === id);
@@ -473,15 +484,16 @@ app.post("/like/:id", async (req, res) => {
     res.sendStatus(404);
   }
 });
-// --- 【修正点】ここまで ---
 
-app.post("/reply/:id", (req,res)=>{
+// 【修正】await saveDB() を追加
+app.post("/reply/:id", async (req, res) => {
   const id = Number(req.params.id);
   const post = posts.find(p=>p.id===id);
   if(!post) return res.sendStatus(404);
   const reply = { text: req.body.text, time: Date.now() };
+  if(!post.replies) post.replies = [];
   post.replies.push(reply);
-  saveDB(); 
+  await saveDB(); 
   clients.forEach(c => c.write("data:" + JSON.stringify(post) + "\n\n"));
   res.sendStatus(200);
 });
@@ -501,4 +513,3 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`サーバーが起動しました: http://localhost:${PORT}`);
 });
-

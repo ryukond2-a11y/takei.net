@@ -222,7 +222,11 @@ function addPost(p, prepend = true) {
     imgHTML +
     "<small>" + new Date(p.time).toLocaleString() + "</small>" +
     "<div class='actions'>" +
-      "<button onclick='likePost(" + p.id + ")'>" +
+  "<button onclick='likePost(" + p.id + ")'>" +
+    "<span class='likeText'>" + likeText(p.likes ?? 0) + "</span> " +
+    "<span class='likeCount'>" + (p.likes ?? 0) + "</span>" +
+  "</button>" +
+  "<button onclick='deletePost(" + p.id + ")' style='color:red;'>削除</button>" +
         "<span class='likeText'>" + likeText(p.likes ?? 0) + "</span> " +
         "<span class='likeCount'>" + (p.likes ?? 0) + "</span>" +
       "</button>" +

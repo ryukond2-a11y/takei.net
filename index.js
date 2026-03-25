@@ -12,30 +12,20 @@ const DB_URL = "https://takei-net-default-rtdb.firebaseio.com/posts.json";
 let posts = [];
 let clients = [];
 
-// 【修正】起動時にFirebaseからデータを取ってくる（確実にするためasync化）
-async function initDB() {
-  try {
-    const res = await fetch(DB_URL);
-    const data = await res.json();
+// 起動時にFirebaseからデータを取ってくる
+fetch(DB_URL)
+  .then(res => res.json())
+  .then(data => {
     posts = data || [];
     console.log("Firebase同期完了！");
-  } catch (err) {
-    console.error("初期ロード失敗:", err);
-  }
-}
-initDB();
+  });
 
-// 【修正】保存用の関数（ヘッダーを追加し、完了を待機できるように変更）
+// 保存用の関数を作る
 async function saveDB() {
-  try {
-    await fetch(DB_URL, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(posts)
-    });
-  } catch (err) {
-    console.error("保存失敗:", err);
-  }
+  await fetch(DB_URL, {
+    method: "PUT",
+    body: JSON.stringify(posts)
+  });
 }
 
 const app = express();
@@ -196,7 +186,7 @@ img { max-width: 100%; margin-top: 8px; border-radius: 6px; }
   <h2>お知らせ</h2>
   <ul>
     <li>
-      <p>【表示モードが切り替えできるようになりました】</br>●バグについて：スマートフォンにて通知が表示されないバグを発見し、対処しています。未知のバグを発見した場合はryukond2@gmail.comまでお知らせください。【Ver.4.1.1】</p>
+      <p>【通知が出るようにりました。】</br>投稿できない場合は画面右上のURLの左の南京錠マークをクリックし、【このサイトに対する権限】をクリックし、【通知】を許可にすることをお願いいたします。</br>３月４日は午前8時00分から利用ができ、午後4時以降はメンテナンスのため利用を一時停止することがあります。●バグについて：スマートフォンにて画像の投稿ができないバグを発見し、対処しています。未知のバグを発見した場合は根田までお知らせください。【Ver.4.1.0】</p>
     </li>
   </ul>
 </div>
@@ -265,10 +255,10 @@ function addPost(p, prepend = true) {
     p.replies.forEach(r => {
       repliesHTML +=
         "<div class='reply'>" +
-        escape(r.text) +
-        "<br><small>" +
-        new Date(r.time).toLocaleString() +
-        "</small>" +
+          escape(r.text) +
+          "<br><small>" +
+          new Date(r.time).toLocaleString() +
+          "</small>" +
         "</div>";
     });
   }
@@ -432,7 +422,6 @@ app.get("/posts", (req, res) => {
   res.json(sortedPosts);
 });
 
-// 【修正】await saveDB() を追加
 app.post("/post", async (req, res) => { 
   const { user, text, image, realname } = req.body;
   if (!text?.trim()) return res.sendStatus(400);
@@ -471,7 +460,7 @@ app.post("/post", async (req, res) => {
   res.sendStatus(200);
 });
 
-// 【修正】await saveDB() を追加
+// --- 【修正点】ここからいいね機能のAPI ---
 app.post("/like/:id", async (req, res) => {
   const id = Number(req.params.id);
   const post = posts.find(p => p.id === id);
@@ -484,16 +473,15 @@ app.post("/like/:id", async (req, res) => {
     res.sendStatus(404);
   }
 });
+// --- 【修正点】ここまで ---
 
-// 【修正】await saveDB() を追加
-app.post("/reply/:id", async (req, res) => {
+app.post("/reply/:id", (req,res)=>{
   const id = Number(req.params.id);
   const post = posts.find(p=>p.id===id);
   if(!post) return res.sendStatus(404);
   const reply = { text: req.body.text, time: Date.now() };
-  if(!post.replies) post.replies = [];
   post.replies.push(reply);
-  await saveDB(); 
+  saveDB(); 
   clients.forEach(c => c.write("data:" + JSON.stringify(post) + "\n\n"));
   res.sendStatus(200);
 });

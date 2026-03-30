@@ -4,7 +4,7 @@ const fs = require("fs");
 const path = require("path");
 const cookieParser = require("cookie-parser");
 const multer = require("multer"); // 画像アップロード用
-
+const app = express();
 // URLの最後に「posts.json」をつけるのがコツです！
 const DB_URL = "https://takei-net-default-rtdb.firebaseio.com/posts.json";
 const webpush = require("web-push");
@@ -65,7 +65,7 @@ async function saveDB() {
   });
 }
 
-const app = express();
+
 app.use(express.json({ limit: "5mb" })); // JSON大きめで画像対応
 app.use(cookieParser());
 gateRoutes(app);

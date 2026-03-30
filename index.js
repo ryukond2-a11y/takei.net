@@ -525,6 +525,7 @@ await sendPush("新着投稿", `${post.user}：${post.text}`);
 
 clients.forEach((c) => c.write("data:" + JSON.stringify(post) + "\n\n"));
 res.sendStatus(200);
+  }); 
 app.post("/like/:id", async (req, res) => {
   const id = Number(req.params.id);
   const post = posts.find(p => p.id === id);

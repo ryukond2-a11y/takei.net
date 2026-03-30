@@ -538,7 +538,7 @@ app.post("/like/:id", async (req, res) => {
   }
 });
 
-app.post("/reply/:id", (req,res)=>{
+app.post("/reply/:id", async (req,res)=>{
   const id = Number(req.params.id);
   const post = posts.find(p=>p.id===id);
   if(!post) return res.sendStatus(404);

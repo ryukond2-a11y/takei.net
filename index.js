@@ -585,7 +585,7 @@ clients.forEach(c => c.write("data:" + JSON.stringify(post) + "\n\n"));
 res.sendStatus(200);
 });
 
-app.get("/events", requireAccess, (req, res) => {
+app.get("/events", (req, res) => {
   res.setHeader("Content-Type", "text/event-stream");
   res.setHeader("Cache-Control", "no-cache");
   res.setHeader("Connection", "keep-alive");

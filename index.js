@@ -228,6 +228,16 @@ img { max-width: 100%; margin-top: 8px; border-radius: 6px; }
 <ul id="posts"></ul>
 
 <script>
+function urlBase64ToUint8Array(base64String) {
+  const padding = '='.repeat((4 - base64String.length % 4) % 4);
+
+  const base64 = (base64String + padding)
+    .replace(/-/g, '+')
+    .replace(/_/g, '/');
+
+  const rawData = window.atob(base64);
+  return Uint8Array.from([...rawData].map(c => c.charCodeAt(0)));
+}
 // --- 【変更箇所】Service Workerの登録 ---
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('/sw.js').then(() => {
@@ -239,18 +249,10 @@ document.addEventListener("click", () => {
 }, { once: true });
 async function subscribeUser() {
   const reg = await navigator.serviceWorker.ready;
-function urlBase64ToUint8Array(base64String) {
-  const padding = '='.repeat((4 - base64String.length % 4) % 4);
-  const base64 = (base64String + padding)
-    .replace(/-/g, '+')
-    .replace(/_/g, '/');
 
-  const rawData = atob(base64);
-  return Uint8Array.from([...rawData].map(c => c.charCodeAt(0)));
-}
   const sub = await reg.pushManager.subscribe({
     userVisibleOnly: true,
-    applicationServerKey: urlBase64ToUint8Array("BJ3z...")
+    applicationServerKey: urlBase64ToUint8Array("BJ3zmY9Owg4eUSozHIefg2d3xkD4I43qDjISV7gcT0b7vJ9f4l5JF2Dmi7pjltKxhHzTG-TbbgOKgfM5xfaLq5w")
   });
 
   await fetch("/subscribe", {

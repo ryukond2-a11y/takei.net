@@ -18,7 +18,7 @@ webpush.setVapidDetails(
   publicVapidKey,
   privateVapidKey
 );
-
+app.use(express.json({ limit: "5mb" }));
 // 購読情報を保存する配列（本来はFirebaseに保存するのがベスト）
 let subscriptions = [];
 
@@ -66,7 +66,7 @@ async function saveDB() {
 }
 
 
-app.use(express.json({ limit: "5mb" }));
+
 app.use(cookieParser());
 gateRoutes(app);
 

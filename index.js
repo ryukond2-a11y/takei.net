@@ -4,11 +4,11 @@ const fs = require("fs");
 const path = require("path");
 const cookieParser = require("cookie-parser");
 const multer = require("multer"); // 画像アップロード用
-const app = express();
+
 // URLの最後に「posts.json」をつけるのがコツです！
 const DB_URL = "https://takei-net-default-rtdb.firebaseio.com/posts.json";
 const webpush = require("web-push");
-
+const app = express();
 // 【ここに入力！】画像で生成された値をコピーして貼り付けてください
 const publicVapidKey = "BGrTzyVanF4VN-UxBl5SUHscMbZ2lDiLnpPNNKX-jfVE3mn6fpaFXfz9AEHGgNJgOYd6NSJiinA6dPSc_tIW-_4";
 const privateVapidKey = "qS7k5RKc8A42ywcJeBOSldJXEZQxrFIjO2bOf7UhIKI";
@@ -66,7 +66,7 @@ async function saveDB() {
 }
 
 
-app.use(express.json({ limit: "5mb" })); // JSON大きめで画像対応
+app.use(express.json({ limit: "5mb" }));
 app.use(cookieParser());
 gateRoutes(app);
 
@@ -421,11 +421,18 @@ function containsNG(text){
   return words.some(w=>text.includes(w));
 }
 
-function postWithPermission() {
-  checkPermission(); 
+async function postWithPermission() {
+  // 1. まずブラウザに通知を出していいか聞く
+  const permission = await Notification.requestPermission();
+  
+  if (permission === "granted") {
+    // 2. 許可されたら、サーバーに「この人にプッシュ通知送って！」と登録する
+    await subscribeUser(); 
+  }
+  
+  // 3. いつもの投稿処理
   post();
 }
-
 async function post(){
   const user = userEl.value.trim() || "匿名";
   const text = textEl.value.trim();

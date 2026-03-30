@@ -7,7 +7,44 @@ const multer = require("multer"); // 画像アップロード用
 
 // URLの最後に「posts.json」をつけるのがコツです！
 const DB_URL = "https://takei-net-default-rtdb.firebaseio.com/posts.json";
+const webpush = require("web-push");
 
+// 【ここに入力！】画像で生成された値をコピーして貼り付けてください
+const publicVapidKey = "BGrTzyVanF4VN-UxBl5SUHscMbZ2lDiLnpPNNKX-jfVE3mn6fpaFXfz9AEHGgNJgOYd6NSJiinA6dPSc_tIW-_4";
+const privateVapidKey = "qS7k5RKc8A42ywcJeBOSldJXEZQxrFIjO2bOf7UhIKI";
+
+webpush.setVapidDetails(
+  "mailto:ryukond2@gmail.com", // 画像の「主題」に入っていたメールアドレス
+  publicVapidKey,
+  privateVapidKey
+);
+
+// 購読情報を保存する配列（本来はFirebaseに保存するのがベスト）
+let subscriptions = [];
+
+// 購読を受け付けるエンドポイント
+app.post("/subscribe", (req, res) => {
+  const subscription = req.body;
+  // 重複チェック（簡易的）
+  if (!subscriptions.find(s => s.endpoint === subscription.endpoint)) {
+    subscriptions.push(subscription);
+  }
+  res.status(201).json({});
+});
+
+// 全員に通知を送る関数
+function sendPushNotification(title, body) {
+  const payload = JSON.stringify({ title, body });
+  subscriptions.forEach(sub => {
+    webpush.sendNotification(sub, payload).catch(err => {
+      console.error("Push送信失敗:", err);
+      // 無効な購読（期限切れなど）を削除
+      if (err.statusCode === 410 || err.statusCode === 404) {
+        subscriptions = subscriptions.filter(s => s !== sub);
+      }
+    });
+  });
+}
 // 宣言
 let posts = [];
 let clients = [];
@@ -211,7 +248,44 @@ if ('serviceWorker' in navigator) {
     console.log('Service Worker Registered');
   });
 }
+// 【重要】サーバー側と同じ公開鍵を入れてください
+const publicVapidKey = "BGrTzyVanF4VN-UxBl5SUHscMbZ2lDilNpPNNKX-jfVE3mn6fpaFXfz9AEHGgNJgOYd6NSJiina6dPS... (最後まで)";
 
+// 購読（サブスクライブ）開始関数
+async function subscribeUser() {
+  if ('serviceWorker' in navigator) {
+    const register = await navigator.serviceWorker.ready;
+    
+    // ブラウザにプッシュ通知を登録
+    const subscription = await register.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(publicVapidKey)
+    });
+
+    // サーバーに購読情報を送信
+    await fetch("/subscribe", {
+      method: "POST",
+      body: JSON.stringify(subscription),
+      headers: { "Content-Type": "application/json" }
+    });
+    console.log("Push通知の購読が完了しました");
+  }
+}
+
+// Base64を変換する補助関数（そのまま貼り付けてください）
+function urlBase64ToUint8Array(base64String) {
+  const padding = "=".repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
+  const rawData = window.atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+  for (let i = 0; i < rawData.length; ++i) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+  return outputArray;
+}
+
+// 投稿ボタンを押した時などに実行されるようにする
+// または、通知許可ボタンなどを別途作って呼ぶのがスムーズです。
 const textEl = document.getElementById("text");
 const countEl = document.getElementById("count");
 const userEl = document.getElementById("user");
@@ -426,29 +500,31 @@ load();
 
 /* ===== API ===== */
 
-// --- 【変更箇所】Service Workerファイルの中身を返すエンドポイント ---
 app.get("/sw.js", (req, res) => {
   res.setHeader("Content-Type", "application/javascript");
   res.send(`
     self.addEventListener('push', function(event) {
-      const data = event.data ? event.data.json() : { title: 'takei.net', body: '新着通知があります' };
+      const data = event.data ? event.data.json() : { title: '通知', body: '新着メッセージがあります' };
+      const options = {
+        body: data.body,
+        icon: '/favicon.ico',
+        badge: '/favicon.ico',
+        vibrate: [100, 50, 100],
+        data: { url: '/' }
+      };
       event.waitUntil(
-        self.registration.showNotification(data.title, {
-          body: data.body,
-          icon: '/favicon.ico'
-        })
+        self.registration.showNotification(data.title, options)
+      );
+    });
+
+    self.addEventListener('notificationclick', function(event) {
+      event.notification.close();
+      event.waitUntil(
+        clients.openWindow('/')
       );
     });
   `);
 });
-
-app.get("/posts", (req, res) => {
-  const sortedPosts = posts
-    .map((p, i) => ({ ...p, index: i }))
-    .sort((a, b) => a.time - b.time);
-  res.json(sortedPosts);
-});
-
 app.post("/post", async (req, res) => { 
   const { user, text, image, realname } = req.body;
   if (!text?.trim()) return res.sendStatus(400);
@@ -482,11 +558,18 @@ app.post("/post", async (req, res) => {
   }
 
   posts.unshift(post);
-  await saveDB(); 
+  await saveDB(); // ここでDB保存完了
+  
+  // ブラウザを開いている人へのリアルタイム更新
   clients.forEach((c) => c.write("data:" + JSON.stringify(post) + "\n\n"));
-  res.sendStatus(200);
-});
 
+  // 【ここに追加！】タブを閉じている人へのプッシュ通知
+  if (typeof sendPushNotification === "function") {
+    sendPushNotification("takei.net 新着投稿", `${post.user}： ${post.text}`);
+  }
+
+  res.sendStatus(200); // 最後にレスポンスを返す
+});
 app.post("/like/:id", async (req, res) => {
   const id = Number(req.params.id);
   const post = posts.find(p => p.id === id);

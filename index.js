@@ -7,21 +7,10 @@ const multer = require("multer"); // 画像アップロード用
 
 // URLの最後に「posts.json」をつけるのがコツです！
 const DB_URL = "https://takei-net-default-rtdb.firebaseio.com/posts.json";
-const SUB_URL = "https://takei-net-default-rtdb.firebaseio.com/subs.json";
-const webpush = require("web-push");
 
-const publicKey = "BJ3zmY9Owg4eUSozHIefg2d3xkD4I43qDjISV7gcT0b7vJ9f4l5JF2Dmi7pjltKxhHzTG-TbbgOKgfM5xfaLq5w";
-const privateKey = "a0oqi2NLvI-A4uK9Hs88p2xEm0oDYxqKRcoOw6QdZS4";
-
-webpush.setVapidDetails(
-  "mailto:test@example.com",
-  publicKey,
-  privateKey
-);
-
-let subscriptions = [];
 // 宣言
 let posts = [];
+let clients = [];
 
 // 起動時にFirebaseからデータを取ってくる
 fetch(DB_URL)
@@ -30,12 +19,7 @@ fetch(DB_URL)
     posts = data || [];
     console.log("Firebase同期完了！");
   });
-fetch(SUB_URL)
-  .then(res => res.json())
-  .then(data => {
-    subscriptions = data || [];
-    console.log("subscription同期完了！");
-  });
+
 // 保存用の関数を作る
 async function saveDB() {
   await fetch(DB_URL, {
@@ -43,21 +27,7 @@ async function saveDB() {
     body: JSON.stringify(posts)
   });
 }
-async function saveSubs() {
-  await fetch(SUB_URL, {
-    method: "PUT",
-    body: JSON.stringify(subscriptions)
-  });
-}
-async function sendPush(title, body) {
-  const payload = JSON.stringify({ title, body });
 
-  subscriptions.forEach(sub => {
-    webpush.sendNotification(sub, payload).catch(err => {
-      console.error("Push送信失敗:", err);
-    });
-  });
-}
 const app = express();
 app.use(express.json({ limit: "5mb" })); // JSON大きめで画像対応
 app.use(cookieParser());
@@ -83,17 +53,7 @@ const NG_WORDS = [
 let bannedUsers = {}; // { username: timestamp }
 
 const upload = multer({ storage: multer.memoryStorage() });
-app.post("/subscribe", async (req, res) => {
-  const sub = req.body;
 
-  subscriptions.push(sub);
-  await saveSubs(); // ←これ重要
-
-  console.log("登録された:", sub);
-  console.log("現在の登録数:", subscriptions.length);
-
-  res.sendStatus(201);
-});
 /* ===== 画面 ===== */
 app.get("/", requireAccess, (req, res) => {
   res.send(`<!DOCTYPE html>
@@ -245,39 +205,13 @@ img { max-width: 100%; margin-top: 8px; border-radius: 6px; }
 <ul id="posts"></ul>
 
 <script>
-function urlBase64ToUint8Array(base64String) {
-  const padding = '='.repeat((4 - base64String.length % 4) % 4);
-
-  const base64 = (base64String + padding)
-    .replace(/-/g, '+')
-    .replace(/_/g, '/');
-
-  const rawData = window.atob(base64);
-  return Uint8Array.from([...rawData].map(c => c.charCodeAt(0)));
-}
 // --- 【変更箇所】Service Workerの登録 ---
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('/sw.js').then(() => {
     console.log('Service Worker Registered');
   });
 }
-document.addEventListener("click", () => {
-  subscribeUser();
-}, { once: true });
-async function subscribeUser() {
-  const reg = await navigator.serviceWorker.ready;
 
-  const sub = await reg.pushManager.subscribe({
-    userVisibleOnly: true,
-    applicationServerKey: urlBase64ToUint8Array("BJ3zmY9Owg4eUSozHIefg2d3xkD4I43qDjISV7gcT0b7vJ9f4l5JF2Dmi7pjltKxhHzTG-TbbgOKgfM5xfaLq5w")
-  });
-
-  await fetch("/subscribe", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(sub)
-  });
-}
 const textEl = document.getElementById("text");
 const countEl = document.getElementById("count");
 const userEl = document.getElementById("user");
@@ -370,7 +304,43 @@ async function load() {
   data.forEach((p) => addPost(p, true));
 }
 
+const es = new EventSource("/events");
+es.onmessage = e => {
+  const p = JSON.parse(e.data);
+  const existing = document.querySelector("li[data-id='" + p.id + "']");
 
+  if (existing) {
+    existing.querySelector(".likeCount").textContent = p.likes ?? 0;
+    existing.querySelector(".likeText").textContent = likeText(p.likes ?? 0);
+    const repliesDiv = existing.querySelector(".replies");
+    if (repliesDiv) {
+      repliesDiv.innerHTML = "";
+      (p.replies || []).forEach(r => {
+        repliesDiv.innerHTML += "<div class='reply'>" + escape(r.text) + "<br><small>" + new Date(r.time).toLocaleString() + "</small></div>";
+      });
+    }
+
+    if ("Notification" in window && Notification.permission === "granted") {
+      const lastReply = p.replies[p.replies.length - 1];
+      if (lastReply && (Date.now() - lastReply.time) < 5000) {
+        new Notification("返信が届きました", { 
+            body: lastReply.text,
+            tag: "reply-" + p.id,
+            renotify: true 
+        });
+      }
+    }
+    return;
+  }
+
+  addPost(p, true);
+  if ("Notification" in window && Notification.permission === "granted") {
+    new Notification("takei.net 新着投稿", { 
+        body: p.user + "： " + p.text,
+        tag: "new-post"
+    });
+  }
+};
 
 function containsNG(text){
   const words = ["ちんちん","ちんこ","まんこ","きんたま","チンチン","チンコ","マンコ","キンタマ"];
@@ -381,7 +351,7 @@ function postWithPermission() {
   checkPermission(); 
   post();
 }
-setInterval(load, 2000);
+
 async function post(){
   const user = userEl.value.trim() || "匿名";
   const text = textEl.value.trim();
@@ -399,6 +369,7 @@ async function post(){
       reader.readAsDataURL(file);
     });
   }
+
   await fetch("/post",{
     method:"POST",
     headers:{"Content-Type":"application/json"},
@@ -510,15 +481,12 @@ app.post("/post", async (req, res) => {
     console.error("GAS保存失敗:", err);
   }
 
-posts.unshift(post);
-await saveDB(); 
+  posts.unshift(post);
+  await saveDB(); 
+  clients.forEach((c) => c.write("data:" + JSON.stringify(post) + "\n\n"));
+  res.sendStatus(200);
+});
 
-// 👇 ここ！！
-await sendPush("新着投稿", `${post.user}：${post.text}`);
-
-clients.forEach((c) => c.write("data:" + JSON.stringify(post) + "\n\n"));
-res.sendStatus(200);
-  }); 
 app.post("/like/:id", async (req, res) => {
   const id = Number(req.params.id);
   const post = posts.find(p => p.id === id);
@@ -532,21 +500,26 @@ app.post("/like/:id", async (req, res) => {
   }
 });
 
-app.post("/reply/:id", async (req,res)=>{
+app.post("/reply/:id", (req,res)=>{
   const id = Number(req.params.id);
   const post = posts.find(p=>p.id===id);
   if(!post) return res.sendStatus(404);
   const reply = { text: req.body.text, time: Date.now() };
- post.replies.push(reply);
-await saveDB(); 
-
-// 👇 ここ！！
-await sendPush("返信が届きました", reply.text);
-
-clients.forEach(c => c.write("data:" + JSON.stringify(post) + "\n\n"));
-res.sendStatus(200);
+  post.replies.push(reply);
+  saveDB(); 
+  clients.forEach(c => c.write("data:" + JSON.stringify(post) + "\n\n"));
+  res.sendStatus(200);
 });
 
+app.get("/events", requireAccess, (req, res) => {
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache");
+  res.setHeader("Connection", "keep-alive");
+  clients.push(res);
+  req.on("close", () => {
+    clients = clients.filter((c) => c !== res);
+  });
+});
 
 /* ===== サーバー起動の設定 ===== */
 const PORT = process.env.PORT || 3000;

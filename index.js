@@ -7,6 +7,7 @@ const multer = require("multer"); // 画像アップロード用
 
 // URLの最後に「posts.json」をつけるのがコツです！
 const DB_URL = "https://takei-net-default-rtdb.firebaseio.com/posts.json";
+const SUB_URL = "https://takei-net-default-rtdb.firebaseio.com/subs.json";
 const webpush = require("web-push");
 
 const publicKey = "BJ3zmY9Owg4eUSozHIefg2d3xkD4I43qDjISV7gcT0b7vJ9f4l5JF2Dmi7pjltKxhHzTG-TbbgOKgfM5xfaLq5w";
@@ -30,12 +31,23 @@ fetch(DB_URL)
     posts = data || [];
     console.log("Firebase同期完了！");
   });
-
+fetch(SUB_URL)
+  .then(res => res.json())
+  .then(data => {
+    subscriptions = data || [];
+    console.log("subscription同期完了！");
+  });
 // 保存用の関数を作る
 async function saveDB() {
   await fetch(DB_URL, {
     method: "PUT",
     body: JSON.stringify(posts)
+  });
+}
+async function saveSubs() {
+  await fetch(SUB_URL, {
+    method: "PUT",
+    body: JSON.stringify(subscriptions)
   });
 }
 async function sendPush(title, body) {
@@ -72,11 +84,15 @@ const NG_WORDS = [
 let bannedUsers = {}; // { username: timestamp }
 
 const upload = multer({ storage: multer.memoryStorage() });
-app.post("/subscribe", (req, res) => {
+app.post("/subscribe", async (req, res) => {
   const sub = req.body;
-  console.log("登録された:", sub); // ← 追加
+
   subscriptions.push(sub);
-  console.log("現在の登録数:", subscriptions.length); // ← 追加
+  await saveSubs(); // ←これ重要
+
+  console.log("登録された:", sub);
+  console.log("現在の登録数:", subscriptions.length);
+
   res.sendStatus(201);
 });
 /* ===== 画面 ===== */
@@ -236,10 +252,7 @@ function urlBase64ToUint8Array(base64String) {
   const base64 = (base64String + padding)
     .replace(/-/g, '+')
     .replace(/_/g, '/');
-document.addEventListener("click", () => {
-  console.log("クリック検知"); // ←追加
-  subscribeUser();
-}, { once: true });
+
   const rawData = window.atob(base64);
   return Uint8Array.from([...rawData].map(c => c.charCodeAt(0)));
 }

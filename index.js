@@ -22,7 +22,6 @@ webpush.setVapidDetails(
 let subscriptions = [];
 // 宣言
 let posts = [];
-let clients = [];
 
 // 起動時にFirebaseからデータを取ってくる
 fetch(DB_URL)
@@ -371,43 +370,7 @@ async function load() {
   data.forEach((p) => addPost(p, true));
 }
 
-const es = new EventSource("/events");
-es.onmessage = e => {
-  const p = JSON.parse(e.data);
-  const existing = document.querySelector("li[data-id='" + p.id + "']");
 
-  if (existing) {
-    existing.querySelector(".likeCount").textContent = p.likes ?? 0;
-    existing.querySelector(".likeText").textContent = likeText(p.likes ?? 0);
-    const repliesDiv = existing.querySelector(".replies");
-    if (repliesDiv) {
-      repliesDiv.innerHTML = "";
-      (p.replies || []).forEach(r => {
-        repliesDiv.innerHTML += "<div class='reply'>" + escape(r.text) + "<br><small>" + new Date(r.time).toLocaleString() + "</small></div>";
-      });
-    }
-
-    if ("Notification" in window && Notification.permission === "granted") {
-      const lastReply = p.replies[p.replies.length - 1];
-      if (lastReply && (Date.now() - lastReply.time) < 5000) {
-        new Notification("返信が届きました", { 
-            body: lastReply.text,
-            tag: "reply-" + p.id,
-            renotify: true 
-        });
-      }
-    }
-    return;
-  }
-
-  addPost(p, true);
-  if ("Notification" in window && Notification.permission === "granted") {
-    new Notification("takei.net 新着投稿", { 
-        body: p.user + "： " + p.text,
-        tag: "new-post"
-    });
-  }
-};
 
 function containsNG(text){
   const words = ["ちんちん","ちんこ","まんこ","きんたま","チンチン","チンコ","マンコ","キンタマ"];
@@ -418,7 +381,7 @@ function postWithPermission() {
   checkPermission(); 
   post();
 }
-
+setInterval(load, 2000);
 async function post(){
   const user = userEl.value.trim() || "匿名";
   const text = textEl.value.trim();
@@ -436,7 +399,6 @@ async function post(){
       reader.readAsDataURL(file);
     });
   }
-
   await fetch("/post",{
     method:"POST",
     headers:{"Content-Type":"application/json"},
@@ -585,15 +547,6 @@ clients.forEach(c => c.write("data:" + JSON.stringify(post) + "\n\n"));
 res.sendStatus(200);
 });
 
-app.get("/events", (req, res) => {
-  res.setHeader("Content-Type", "text/event-stream");
-  res.setHeader("Cache-Control", "no-cache");
-  res.setHeader("Connection", "keep-alive");
-  clients.push(res);
-  req.on("close", () => {
-    clients = clients.filter((c) => c !== res);
-  });
-});
 
 /* ===== サーバー起動の設定 ===== */
 const PORT = process.env.PORT || 3000;

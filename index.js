@@ -7,7 +7,18 @@ const multer = require("multer"); // 画像アップロード用
 
 // URLの最後に「posts.json」をつけるのがコツです！
 const DB_URL = "https://takei-net-default-rtdb.firebaseio.com/posts.json";
+const webpush = require("web-push");
 
+const publicKey = "BJ3zmY9Owg4eUSozHIefg2d3xkD4I43qDjISV7gcT0b7vJ9f4l5JF2Dmi7pjltKxhHzTG-TbbgOKgfM5xfaLq5w";
+const privateKey = "a0oqi2NLvI-A4uK9Hs88p2xEm0oDYxqKRcoOw6QdZS4";
+
+webpush.setVapidDetails(
+  "mailto:test@example.com",
+  publicKey,
+  privateKey
+);
+
+let subscriptions = [];
 // 宣言
 let posts = [];
 let clients = [];
@@ -27,7 +38,15 @@ async function saveDB() {
     body: JSON.stringify(posts)
   });
 }
+async function sendPush(title, body) {
+  const payload = JSON.stringify({ title, body });
 
+  subscriptions.forEach(sub => {
+    webpush.sendNotification(sub, payload).catch(err => {
+      console.error("Push送信失敗:", err);
+    });
+  });
+}
 const app = express();
 app.use(express.json({ limit: "5mb" })); // JSON大きめで画像対応
 app.use(cookieParser());
@@ -53,7 +72,11 @@ const NG_WORDS = [
 let bannedUsers = {}; // { username: timestamp }
 
 const upload = multer({ storage: multer.memoryStorage() });
-
+app.post("/subscribe", (req, res) => {
+  const sub = req.body;
+  subscriptions.push(sub);
+  res.sendStatus(201);
+});
 /* ===== 画面 ===== */
 app.get("/", requireAccess, (req, res) => {
   res.send(`<!DOCTYPE html>
@@ -211,7 +234,20 @@ if ('serviceWorker' in navigator) {
     console.log('Service Worker Registered');
   });
 }
+async function subscribeUser() {
+  const reg = await navigator.serviceWorker.ready;
 
+  const sub = await reg.pushManager.subscribe({
+    userVisibleOnly: true,
+    applicationServerKey: "BJ3zmY9Owg4eUSozHIefg2d3xkD4I43qDjISV7gcT0b7vJ9f4l5JF2Dmi7pjltKxhHzTG-TbbgOKgfM5xfaLq5w"
+  });
+
+  await fetch("/subscribe", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(sub)
+  });
+}
 const textEl = document.getElementById("text");
 const countEl = document.getElementById("count");
 const userEl = document.getElementById("user");
@@ -481,12 +517,14 @@ app.post("/post", async (req, res) => {
     console.error("GAS保存失敗:", err);
   }
 
-  posts.unshift(post);
-  await saveDB(); 
-  clients.forEach((c) => c.write("data:" + JSON.stringify(post) + "\n\n"));
-  res.sendStatus(200);
-});
+posts.unshift(post);
+await saveDB(); 
 
+// 👇 ここ！！
+await sendPush("新着投稿", `${post.user}：${post.text}`);
+
+clients.forEach((c) => c.write("data:" + JSON.stringify(post) + "\n\n"));
+res.sendStatus(200);
 app.post("/like/:id", async (req, res) => {
   const id = Number(req.params.id);
   const post = posts.find(p => p.id === id);
@@ -505,10 +543,14 @@ app.post("/reply/:id", (req,res)=>{
   const post = posts.find(p=>p.id===id);
   if(!post) return res.sendStatus(404);
   const reply = { text: req.body.text, time: Date.now() };
-  post.replies.push(reply);
-  saveDB(); 
-  clients.forEach(c => c.write("data:" + JSON.stringify(post) + "\n\n"));
-  res.sendStatus(200);
+ post.replies.push(reply);
+await saveDB(); 
+
+// 👇 ここ！！
+await sendPush("返信が届きました", reply.text);
+
+clients.forEach(c => c.write("data:" + JSON.stringify(post) + "\n\n"));
+res.sendStatus(200);
 });
 
 app.get("/events", requireAccess, (req, res) => {

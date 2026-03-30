@@ -236,7 +236,10 @@ function urlBase64ToUint8Array(base64String) {
   const base64 = (base64String + padding)
     .replace(/-/g, '+')
     .replace(/_/g, '/');
-
+document.addEventListener("click", () => {
+  console.log("クリック検知"); // ←追加
+  subscribeUser();
+}, { once: true });
   const rawData = window.atob(base64);
   return Uint8Array.from([...rawData].map(c => c.charCodeAt(0)));
 }

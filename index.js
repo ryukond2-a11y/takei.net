@@ -74,7 +74,9 @@ let bannedUsers = {}; // { username: timestamp }
 const upload = multer({ storage: multer.memoryStorage() });
 app.post("/subscribe", (req, res) => {
   const sub = req.body;
+  console.log("登録された:", sub); // ← 追加
   subscriptions.push(sub);
+  console.log("現在の登録数:", subscriptions.length); // ← 追加
   res.sendStatus(201);
 });
 /* ===== 画面 ===== */

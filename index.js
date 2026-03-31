@@ -265,7 +265,8 @@ function addPost(p, prepend = true) {
     p.replies.forEach(r => {
       repliesHTML +=
         "<div class='reply'>" +
-          escape(r.text) +
+          "<b>" + escape(r.user) + "</b><br>" +
+escape(r.text)
           "<br><small>" +
           new Date(r.time).toLocaleString() +
           "</small>" +

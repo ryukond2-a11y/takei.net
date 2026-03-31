@@ -264,13 +264,13 @@ function addPost(p, prepend = true) {
   if (p.replies && p.replies.length > 0) {
     p.replies.forEach(r => {
       repliesHTML +=
-        "<div class='reply'>" +
-          "<b>" + escape(r.user) + "</b><br>" +
-escape(r.text)
-          "<br><small>" +
-          new Date(r.time).toLocaleString() +
-          "</small>" +
-        "</div>";
+  "<div class='reply'>" +
+    "<b>" + escape(r.user || "匿名") + "</b><br>" +
+    escape(r.text) +
+    "<br><small>" +
+    new Date(r.time).toLocaleString() +
+    "</small>" +
+  "</div>";
     });
   }
 

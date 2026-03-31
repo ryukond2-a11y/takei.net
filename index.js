@@ -316,9 +316,14 @@ es.onmessage = e => {
     const repliesDiv = existing.querySelector(".replies");
     if (repliesDiv) {
       repliesDiv.innerHTML = "";
-      (p.replies || []).forEach(r => {
-        repliesDiv.innerHTML += "<div class='reply'>" + escape(r.text) + "<br><small>" + new Date(r.time).toLocaleString() + "</small></div>";
-      });
+(p.replies || []).forEach(r => {
+  repliesDiv.innerHTML += 
+    "<div class='reply'>" +
+      "<b>" + escape(r.user || "匿名") + "</b><br>" +
+      escape(r.text) +
+      "<br><small>" + new Date(r.time).toLocaleString() + "</small>" +
+    "</div>";
+});
     }
 
     if ("Notification" in window && Notification.permission === "granted") {
@@ -407,15 +412,23 @@ function showReplyBox(id){
 async function sendReply(id){
   const input = document.getElementById("replyInput-" + id);
   const text = input.value.trim();
+  const user = userEl.value.trim();
+
+  if(!user){
+    alert("ユーザー名を入力してください");
+    return;
+  }
+
   if(!text) return;
+
   await fetch("/reply/" + id,{
     method:"POST",
     headers:{"Content-Type":"application/json"},
-    body: JSON.stringify({ text })
+    body: JSON.stringify({ text, user })
   });
+
   input.value = "";
 }
-
 document.addEventListener('click', checkPermission, { once: true });
 
 load();
@@ -505,7 +518,17 @@ app.post("/reply/:id", (req,res)=>{
   const id = Number(req.params.id);
   const post = posts.find(p=>p.id===id);
   if(!post) return res.sendStatus(404);
-  const reply = { text: req.body.text, time: Date.now() };
+  const { text, user } = req.body;
+
+if (!user?.trim()) {
+  return res.status(400).send("ユーザー名を入力してください");
+}
+
+const reply = { 
+  text: text,
+  user: user,
+  time: Date.now()
+};
   post.replies.push(reply);
   saveDB(); 
   clients.forEach(c => c.write("data:" + JSON.stringify(post) + "\n\n"));

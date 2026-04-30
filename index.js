@@ -13,13 +13,21 @@ let posts = [];
 let clients = [];
 
 // 起動時にFirebaseからデータを取ってくる
+// 起動時にFirebaseからデータを取ってくる
 fetch(DB_URL)
-  .then(res => res.json())
+  .then(res => {
+    if (!res.ok) throw new Error("Firebase fetch failed");
+    return res.json();
+  })
   .then(data => {
-    posts = data || [];
+    // Firebaseが空（null）の場合、配列として初期化する
+    posts = Array.isArray(data) ? data : (data ? Object.values(data) : []);
     console.log("Firebase同期完了！");
+  })
+  .catch(err => {
+    console.error("Firebase読み込みエラー:", err);
+    posts = []; // エラー時は空配列で初期化してサーバー停止を防ぐ
   });
-
 // 保存用の関数を作る
 async function saveDB() {
   await fetch(DB_URL, {

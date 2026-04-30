@@ -19,9 +19,13 @@ fetch(DB_URL)
     if (!res.ok) throw new Error("Firebase fetch failed");
     return res.json();
   })
-  .then(data => {
-    // Firebaseが空（null）の場合、配列として初期化する
-    posts = Array.isArray(data) ? data : (data ? Object.values(data) : []);
+.then(data => {
+    // もし data.posts があればそれを使い、なければ data 自体を対象にする
+    const rawData = (data && data.posts) ? data.posts : data;
+
+    // 配列ならそのまま、オブジェクトなら値だけ取り出し、空なら [] にする
+    posts = Array.isArray(rawData) ? rawData : (rawData ? Object.values(rawData) : []);
+
     console.log("Firebase同期完了！");
   })
   .catch(err => {

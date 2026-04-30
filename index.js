@@ -6,7 +6,7 @@ const cookieParser = require("cookie-parser");
 const multer = require("multer"); // 画像アップロード用
 
 // URLの最後に「posts.json」をつけるのがコツです！
-const DB_URL =https://takei-net-default-rtdb.firebaseio.com/ "https://takei-net-default-rtdb.firebaseio.com/posts.json";
+const DB_URL = "https://takei-net-default-rtdb.firebaseio.com/posts.json";
 
 // 宣言
 let posts = [];
